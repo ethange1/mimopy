@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mimopy"
+version = "0.1.0"
+description = "A Python library for MIMO systems"
+dependencies = [
+    "numpy",
+    "matplotlib",
+]
+authors=[
+    {name="Samuel Li", email="hcsamuel.li@gmail.com"},
+]
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+
