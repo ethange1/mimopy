@@ -2,7 +2,7 @@ from .base import BaseChannel
 import numpy as np
 
 
-class LoSChannel(BaseChannel):
+class LosChannel(BaseChannel):
     """Line-of-sight channel class.
 
     Attributes
@@ -21,7 +21,7 @@ class LoSChannel(BaseChannel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = "LoSChannel"
+        self.name = "LosChannel"
         self.az = 0
         self.el = 0
         # self.noise_power = 1e-3
