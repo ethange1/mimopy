@@ -24,13 +24,13 @@ class Array:
         self.marker = "o"
         self.power = 1
         self.name = "Array"
-    
+
     def __str__(self):
         return self.name
-    
+
     def __repr__(self):
         return self.name
-    
+
     def __len__(self):
         return self.num_antennas
 
@@ -88,7 +88,6 @@ class Array:
         for kwarg in kwargs:
             ula.__setattr__(kwarg, kwargs[kwarg])
         return ula
-
 
     @classmethod
     def initialize_upa(cls, num_rows, num_cols, plane="xy", array_center=None):
@@ -408,7 +407,6 @@ class Array:
                 + dz * np.sin(el)
             )
         )
-
         return array_response_vector
 
     def get_array_gain(self, az, el, db=True):
@@ -421,14 +419,14 @@ class Array:
         el : float
             Elevation angle in radians.
         db : bool, optional
-        
+
             If True, the gain is returned in dB. Default is True.
         """
 
         array_response_vector = self.get_array_response(az, el)
-        gain = (self.weights.conj().T @ array_response_vector)**2
+        gain = (self.weights.conj().T @ array_response_vector) ** 2
         if db:
-            return 10 * np.log10(np.abs(gain+1e-9))
+            return 10 * np.log10(np.abs(gain + 1e-9))
         return gain
 
     def get_conjugate_beamformer(self, az, el):
@@ -465,27 +463,13 @@ class Array:
     # Plotting
     ############################
 
-    def show_beamformer_pattern(self, weights, **kwargs):
-        """Plot the beamformer pattern of the array given a specific set of weights.
-
-        Parameters
-        ----------
-        weights : array_like
-            Weights of the beamformer.
-        **kwargs : optional
-            show_array_pattern arguments.
-        """
-        orig_weights = self.get_weights()
-        self.set_weights(weights)
-        self.show_array_pattern(**kwargs)
-        self.weights = self.set_weights(orig_weights)
-
-    def show_array_pattern(
+    def plot_gain(
         self,
         el=0,
         az_range=178,
         az_center=0,
         num_points=178,
+        weights=None,
         polar=False,
         db=True,
         ax=None,
@@ -507,6 +491,9 @@ class Array:
         **kwargs : optional
             matplotlib.pyplot.fig arguments.
         """
+        if weights is not None:
+            orig_weights = self.get_weights()
+            self.set_weights(weights)
         az = (
             np.linspace(az_center - az_range / 2, az_center + az_range / 2, num_points)
             * np.pi
@@ -536,11 +523,13 @@ class Array:
         title = f"Array Pattern at Elevation = {el} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
         ax.set_title(title)
         ax.grid(True)
+        if weights is not None:
+            self.set_weights(orig_weights)
         if ax is None:
             plt.show()
         return ax
 
-    def show_array_pattern_3d(
+    def plot_gain_3d(
         self,
         az_range=360,
         el_range=180,
@@ -621,7 +610,7 @@ class Array:
             plt.show()
         return ax
 
-    def show_array_3d(self):
+    def plot_array_3d(self):
         """Plot the array."""
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
@@ -636,7 +625,7 @@ class Array:
         ax.set_zlabel("z")
         plt.show()
 
-    def show_array(self, plane="xy", ax=None):
+    def plot_array(self, plane="xy", ax=None):
         """Plot the array in 2D projection
 
         Parameters
