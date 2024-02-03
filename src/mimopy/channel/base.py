@@ -1,16 +1,19 @@
+from typing import Any
 import numpy as np
+from numpy import log10
+
 # from ..array import Array
 
-class BaseChannel:
+
+class Channel:
     """Base class for channels.
-    
+
     Attributes
     ----------
         name (str): Channel name.
-        tx_array (Array): Transmit array.
-        rx_array (Array): Receive array.
-        num_antennas_tx (int): Number of transmit antennas.
-        num_antennas_rx (int): Number of receive antennas.
+        tx (Array): Transmit array.
+        rx (Array): Receive array.
+        noise_power (float): Noise power in dBm.
         propagation_velocity (float): Propagation velocity in meters per second.
         carrier_frequency (float): Carrier frequency in Hertz.
         carrier_wavelength (float): Carrier wavelength in meters.
@@ -18,52 +21,70 @@ class BaseChannel:
         channel_energy_is_normalized (bool): Indicates if the channel energy is normalized.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, tx=None, rx=None, *args, **kwargs):
         self.name = "BaseChannel"
+        self.tx = tx
+        self.rx = rx
         self.channel_matrix = None
-        self.tx_array = None
-        self.rx_array = None
-        self.num_antennas_tx = 0
-        self.num_antennas_rx = 0
+        self.noise_power = 0
+        self.noise_power_lin = 10 ** (self.noise_power / 10)
+
         self.propagation_velocity = 299792458
         self.carrier_frequency = 1e9
         self.carrier_wavelength = self.propagation_velocity / self.carrier_frequency
+
         self.normalized_channel_energy = 1
         self.channel_energy_is_normalized = False
 
+        # for key, value in kwargs.items():
+        #     setattr(self, key, value)
+        # if tx is not None and rx is not None:
+        #     self.realize()
+
     def __str__(self):
         return self.name
+    
+    def __repr__(self):
+        return self.name
 
-    def set_tx_array(self, tx_array):
+    def set_tx(self, tx):
         """Set the transmit array of the channel.
 
         Parameters
         ----------
-            tx_array (Array): Transmit array.
+            tx (Array): Transmit array.
         """
-        self.tx_array = tx_array
-        self.num_antennas_tx = tx_array.num_antennas
+        self.tx = tx
 
-    def set_rx_array(self, rx_array):
+    def set_rx(self, rx):
         """Set the receive array of the channel.
 
         Parameters
         ----------
-            rx_array (Array): Receive array.
+            rx (Array): Receive array.
         """
-        self.rx_array = rx_array
-        self.num_antennas_rx = rx_array.num_antennas
+        self.rx = rx
 
-    def set_arrays(self, tx_array, rx_array):
+    def set_arrays(self, tx, rx):
         """Set the transmit and receive arrays of the channel.
 
         Parameters
         ----------
-            tx_array (Array): Transmit array.
-            rx_array (Array): Receive array.
+            tx (Array): Transmit array.
+            rx (Array): Receive array.
         """
-        self.set_tx_array(tx_array)
-        self.set_rx_array(rx_array)
+        self.set_tx(tx)
+        self.set_rx(rx)
+
+    def set_noise_power(self, noise_power):
+        """Set the noise power of the channel.
+
+        Parameters
+        ----------
+            noise_power (float): Noise power in dBm.
+        """
+        self.noise_power = noise_power
+        self.noise_power_lin = 10 ** (noise_power / 10)
 
     def set_carrier_frequency(self, carrier_frequency):
         """Set the carrier frequency of the channel.
@@ -133,7 +154,43 @@ class BaseChannel:
             self.channel_matrix = self._normalize_channel_energy(channel_matrix)
         else:
             self.channel_matrix = channel_matrix
+
+    def get_channel_matrix(self):
+        """Get the channel matrix of the channel.
+
+        Returns
+        -------
+            np.ndarray: Channel matrix.
+        """
+        return self.channel_matrix
     
-    @classmethod
-    def initialize(cls, tx_array, rx_array):
-        pass
+    def get_noise_power(self, dBm=True):
+        """Get the noise power of the channel.
+
+        Parameters
+        ----------
+            dBm (bool): If True, returns the noise power in dBm. Otherwise, returns the noise power in linear scale.
+
+        Returns
+        -------
+            float: Noise power.
+        """
+        if dBm:
+            return self.noise_power
+        else:
+            return self.noise_power_lin
+
+    def get_bf_gain(self) -> float:
+        """Get the beamforming gain of the channel  in dBm."""
+        f = self.tx.get_weights().reshape(-1, 1)
+        H = self.get_channel_matrix()
+        w = self.rx.get_weights().reshape(1, -1)
+        P = self.tx.get_power()
+        return 10 * log10(P * np.abs(w.conj().T @ H @ f) ** 2)
+
+    def get_snr(self):
+        raise NotImplementedError
+
+    def realize(self):
+        """Realize the channel."""
+        raise NotImplementedError

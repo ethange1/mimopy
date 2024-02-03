@@ -1,15 +1,16 @@
-from .base import BaseChannel
+from .base import Channel
 import numpy as np
+from numpy import log10
 
 
-class LosChannel(BaseChannel):
+class LosChannel(Channel):
     """Line-of-sight channel class.
 
     Attributes
     ----------
         name (str): Channel name.
-        tx_array (Array): Transmit array.
-        rx_array (Array): Receive array.
+        tx (Array): Transmit array.
+        rx (Array): Receive array.
         num_antennas_tx (int): Number of transmit antennas.
         num_antennas_rx (int): Number of receive antennas.
         propagation_velocity (float): Propagation velocity in meters per second.
@@ -24,22 +25,26 @@ class LosChannel(BaseChannel):
         self.name = "LosChannel"
         self.az = 0
         self.el = 0
-        # self.noise_power = 1e-3
         self.is_channel_energy_normalized = True
+        self.realize()
 
-    @classmethod
-    def initialize(cls, tx_array, rx_array):
-        """Initialize the channel.
+    def realize(self):
+        """Realize the channel."""
+        self.set_angular_separation()
+        tx_response = self.tx.get_array_response(self.az, self.el)
+        rx_response = self.rx.get_array_response(self.az + np.pi, self.el + np.pi)
+        H = np.outer(tx_response, rx_response)
+        self.set_channel_matrix(H)
 
-        Parameters
-        ----------
-            tx_array (Array): Transmit array.
-            rx_array (Array): Receive array.
-        """
-        channel = cls()
-        channel.set_arrays(tx_array, rx_array)
-        channel.realize_channel()
-        return channel
+    def get_bf_noise(self) -> float:
+        """Get the noise power after beamforming in dBm."""
+        w = self.rx.get_weights().reshape(1, -1)
+        return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
+        
+
+    def get_snr(self) -> float:
+        """Get the signal-to-noise ratio (SNR) of the channel. """
+        return self.get_bf_gain() - self.get_bf_noise()
 
     @staticmethod
     def _get_relative_position(loc1, loc2):
@@ -58,7 +63,7 @@ class LosChannel(BaseChannel):
         el = np.arcsin(dz / range)
         return range, az, el
 
-    def set_angular_separation(self, az=0, el=0):
+    def set_angular_separation(self):
         """Set angular separation between transmit and receive arrays.
 
         Parameters
@@ -69,35 +74,8 @@ class LosChannel(BaseChannel):
                 Elevation angle in degrees depending the transmitter
         """
 
-        atx_center = self.tx_array.get_array_center()
-        arx_center = self.rx_array.get_array_center()
+        atx_center = self.tx.get_array_center()
+        arx_center = self.rx.get_array_center()
         _, az, el = self._get_relative_position(atx_center, arx_center)
         self.az = az
         self.el = el
-
-    # def set_noise_power(self, noise_power):
-    #     """Set the noise power.
-
-    #     Parameters
-    #     ----------
-    #         noise_power: Float
-    #             Noise power.
-    #     """
-    #     self.noise_power = noise_power
-
-    # def get_noise_power(self):
-    #     """Get the noise power."""
-    #     return self.noise_power
-
-    def realize_channel(self):
-        """Realize the channel.
-
-        Parameters
-        ----------
-            *args, **kwargs: Arguments and keyword arguments to be passed to the channel realization method.
-        """
-        self.set_angular_separation()
-        tx_response = self.tx_array.get_array_response(self.az, self.el)
-        rx_response = self.rx_array.get_array_response(self.az + np.pi, self.el + np.pi)
-        H = np.outer(tx_response, rx_response)
-        self.set_channel_matrix(H)

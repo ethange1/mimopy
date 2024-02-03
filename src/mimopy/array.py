@@ -17,14 +17,25 @@ class Array:
         unit weight.
     """
 
-    def __init__(self, num_antennas, coordinates):
+    def __init__(self, num_antennas, coordinates="[0, 0, 0]"):
         self.num_antennas = num_antennas
-        self.coordinates = coordinates
+        self.coordinates = np.array(coordinates)
         self.weights = np.ones(num_antennas)
         self.marker = "o"
+        self.power = 1
+        self.name = "Array"
+    
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.name
+    
+    def __len__(self):
+        return self.num_antennas
 
     @classmethod
-    def initialize_ula(cls, num_antennas, ax="x", array_center=[0, 0, 0]):
+    def initialize_ula(cls, num_antennas, ax="x", array_center=[0, 0, 0], **kwargs):
         """Empties the array and creates a half-wavelength spaced,
         uniforom linear array along the desired axis centered at the origin.
 
@@ -73,7 +84,11 @@ class Array:
             raise ValueError("ax must be 'x', 'y' or 'z'")
         coordinates = cls._translate_coordinates(coordinates)
         coordinates = cls._translate_coordinates(coordinates, array_center)
-        return cls(num_antennas, coordinates)
+        ula = cls(num_antennas, coordinates)
+        for kwarg in kwargs:
+            ula.__setattr__(kwarg, kwargs[kwarg])
+        return ula
+
 
     @classmethod
     def initialize_upa(cls, num_rows, num_cols, plane="xy", array_center=None):
@@ -215,7 +230,7 @@ class Array:
     #  Antenna Manipulation
     ############################
 
-    def add_elemetnnas(self, coordinates):
+    def add_elements(self, coordinates):
         """Add antennas to the array.
 
         Parameters
