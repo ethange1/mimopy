@@ -369,6 +369,10 @@ class Array:
     def get_array_center(self):
         """Returns the center of the array."""
         return np.mean(self.coordinates, axis=0)
+    
+    def get_location(self):
+        """Returns the location of the array."""
+        return np.mean(self.coordinates, axis=0)
 
     ############################
     # Get Array Properties
