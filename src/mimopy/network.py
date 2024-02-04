@@ -87,6 +87,11 @@ class Network:
             - self.get_interference(channel)
             - channel.get_bf_noise()
         )
+    
+    def get_spectral_efﬁciency(self, channel) -> float:
+        """Get the spectral efﬁciency of the channel in bps/Hz."""
+        return log10(1 + 10 ** (self.get_sinr(channel) / 10))
+
 
     def plot_network(self, plane="xy", annotate=False, ax=None):
         """Plot the network."""
