@@ -2,8 +2,8 @@ from typing import Any
 import numpy as np
 from numpy import log10
 
-from array import Array
-from channel import *
+from .array import Array
+from .channel import *
 from matplotlib import pyplot as plt
 
 
@@ -14,14 +14,14 @@ class Network:
     ----------
         name (str): Network name.
         nodes (List): List of nodes in the network.
-        channels (List): List of channels in the network.
+        links (List): List of links in the network.
         adj_matrix (Array): edge-node adjacency matrix of the network.
-            The rows are edges (channel) and the cols are nodes.
+            The rows are edges (link) and the cols are nodes.
     """
 
     def __init__(self, *args, **kwargs):
         self.name = "Network"
-        self.channels = []
+        self.links = []
         self.nodes = dict()
 
     def __str__(self):
@@ -33,64 +33,64 @@ class Network:
             node.name += f"_{len(self.nodes)}"
             self.nodes[node] = {"dl": [], "ul": []}
 
-    def add_channel(self, channel):
-        """Add a channel to the network."""
-        channel.name += f"_{len(self.channels)}"
-        self.channels.append(channel)
-        self.add_node(channel.tx)
-        self.nodes[channel.tx]["dl"].append((channel.rx, channel))
-        self.add_node(channel.rx)
-        self.nodes[channel.rx]["ul"].append((channel.tx, channel))
+    def add_link(self, link):
+        """Add a link to the network."""
+        link.name += f"_{len(self.links)}"
+        self.links.append(link)
+        self.add_node(link.tx)
+        self.nodes[link.tx]["dl"].append((link.rx, link))
+        self.add_node(link.rx)
+        self.nodes[link.rx]["ul"].append((link.tx, link))
 
     def remove_node(self, node: Array):
-        """Remove a node and all channels associated with it from the network."""
+        """Remove a node and all links associated with it from the network."""
         if node in self.nodes:
-            for _, channel in self.nodes[node]["dl"]:
-                # the node is the tx; remove ul from channel.rx
-                self.channels.remove(channel)
-                self.nodes[channel.rx]["ul"].remove((node, channel))
-            for _, channel in self.nodes[node]["ul"]:
-                # the node is the rx; remove dl from channel.tx
-                self.channels.remove(channel)
-                self.nodes[channel.tx]["dl"].remove((node, channel))
+            for _, link in self.nodes[node]["dl"]:
+                # the node is the tx; remove ul from link.rx
+                self.links.remove(link)
+                self.nodes[link.rx]["ul"].remove((node, link))
+            for _, link in self.nodes[node]["ul"]:
+                # the node is the rx; remove dl from link.tx
+                self.links.remove(link)
+                self.nodes[link.tx]["dl"].remove((node, link))
 
-    def remove_channel(self, channel):
-        """Remove a channel from the network."""
-        self.channels.remove(channel)
-        self.nodes[channel.tx]["dl"].remove((channel.rx, channel))
-        self.nodes[channel.rx]["ul"].remove((channel.tx, channel))
+    def remove_link(self, link):
+        """Remove a link from the network."""
+        self.links.remove(link)
+        self.nodes[link.tx]["dl"].remove((link.rx, link))
+        self.nodes[link.rx]["ul"].remove((link.tx, link))
 
-    def get_bf_gain(self, channel) -> float:
-        """Get the beamforming gain of the channel in dB."""
-        return channel.get_bf_gain()
+    def get_bf_gain(self, link) -> float:
+        """Get the beamforming gain of the link in dB."""
+        return link.get_bf_gain()
 
-    def get_snr(self, channel) -> float:
-        """Get the signal-to-noise ratio (SNR) of the channel in dB."""
-        return self.get_bf_gain(channel) - channel.get_bf_noise()
+    def get_snr(self, link) -> float:
+        """Get the signal-to-noise ratio (SNR) of the link in dB."""
+        return self.get_bf_gain(link) - link.get_bf_noise()
 
-    def get_interference(self, channel) -> float:
-        """Get the interference-to-noise ratio (INR) of the channel in dB."""
-        # interference is the sum of bf gains of all other ul channels of the rx
+    def get_interference(self, link) -> float:
+        """Get the interference-to-noise ratio (INR) of the link in dB."""
+        # interference is the sum of bf gains of all other ul links of the rx
         interference = 0
-        for _, ch in self.nodes[channel.rx]["ul"]:
-            if ch != channel:
+        for _, ch in self.nodes[link.rx]["ul"]:
+            if ch != link:
                 interference += ch.get_bf_gain()
 
-    def get_inr(self, channel) -> float:
-        """Get the interference-to-noise ratio (INR) of the channel in dB."""
-        return self.get_interference(channel) - channel.get_bf_noise()
+    def get_inr(self, link) -> float:
+        """Get the interference-to-noise ratio (INR) of the link in dB."""
+        return self.get_interference(link) - link.get_bf_noise()
 
-    def get_sinr(self, channel) -> float:
-        """Get the signal-to-interference-plus-noise ratio (SINR) of the channel in dB."""
+    def get_sinr(self, link) -> float:
+        """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
         return (
-            self.get_snr(channel)
-            - self.get_interference(channel)
-            - channel.get_bf_noise()
+            self.get_snr(link)
+            - self.get_interference(link)
+            - link.get_bf_noise()
         )
     
-    def get_spectral_efﬁciency(self, channel) -> float:
-        """Get the spectral efﬁciency of the channel in bps/Hz."""
-        return log10(1 + 10 ** (self.get_sinr(channel) / 10))
+    def get_spectral_efﬁciency(self, link) -> float:
+        """Get the spectral efﬁciency of the link in bps/Hz."""
+        return log10(1 + 10 ** (self.get_sinr(link) / 10))
 
 
     def plot_network(self, plane="xy", annotate=False, ax=None):
@@ -116,7 +116,7 @@ class Network:
                     node_loc[plot_coords],
                 )
             # plot downlink
-            for dl, channel in value["dl"]:
+            for dl, link in value["dl"]:
                 dl_loc = dl.get_location()[plot_coords]
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
@@ -130,7 +130,7 @@ class Network:
                 if annotate:
                     offset = np.random.uniform(dl_loc - node_loc) * 0.1
                     ax.annotate(
-                        channel.name,
+                        link.name,
                         (dl_loc + node_loc) / 2
                         + np.random.uniform(dl_loc - node_loc) * 0.1,
                     )
@@ -154,7 +154,7 @@ class Network:
             if annotate:
                 ax.text(*node_loc, node.name)
             # plot downlink
-            for dl, channel in value["dl"]:
+            for dl, link in value["dl"]:
                 dl_loc = dl.get_location()
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
@@ -166,7 +166,7 @@ class Network:
                     label=dl.name,
                 )
                 if annotate:
-                    ax.text(*(dl_loc + node_loc) / 2, channel.name)
+                    ax.text(*(dl_loc + node_loc) / 2, link.name)
         ax.set_xlabel("X-axis")
         ax.set_ylabel("Y-axis")
         ax.set_zlabel("Z-axis")
