@@ -1,4 +1,7 @@
 from typing import Any
+from collections import abc
+from collections.abc import Iterable
+
 import numpy as np
 from numpy import log10
 
@@ -33,7 +36,7 @@ class Network:
             node.name += f"_{len(self.nodes)}"
             self.nodes[node] = {"dl": [], "ul": []}
 
-    def add_link(self, link):
+    def _add_link(self, link):
         """Add a link to the network."""
         link.name += f"_{len(self.links)}"
         self.links.append(link)
@@ -41,8 +44,16 @@ class Network:
         self.nodes[link.tx]["dl"].append((link.rx, link))
         self.add_node(link.rx)
         self.nodes[link.rx]["ul"].append((link.tx, link))
+    
+    def add_link(self, links):
+        """Add links to the network."""
+        if isinstance(links, Iterable):
+            for link in links:
+                self._add_link(link)
+        else:
+            self._add_link(links)
 
-    def remove_node(self, node: Array):
+    def _remove_node(self, node: Array):
         """Remove a node and all links associated with it from the network."""
         if node in self.nodes:
             for _, link in self.nodes[node]["dl"]:
@@ -53,12 +64,28 @@ class Network:
                 # the node is the rx; remove dl from link.tx
                 self.links.remove(link)
                 self.nodes[link.tx]["dl"].remove((node, link))
+    
+    def remove_node(self, nodes):
+        """Remove nodes from the network."""
+        if nodes.__iter__:
+            for node in nodes:
+                self._remove_node(node)
+        else:
+            self._remove_node(nodes)
 
-    def remove_link(self, link):
+    def _remove_link(self, link):
         """Remove a link from the network."""
         self.links.remove(link)
         self.nodes[link.tx]["dl"].remove((link.rx, link))
         self.nodes[link.rx]["ul"].remove((link.tx, link))
+    
+    def remove_link(self, links):
+        """Remove links from the network."""
+        if isinstance(links, Iterable):
+            for link in links:
+                self._remove_link(link)
+        else:
+            self._remove_link(links)
 
     def get_bf_gain(self, link) -> float:
         """Get the beamforming gain of the link in dB."""
@@ -93,11 +120,8 @@ class Network:
         return log10(1 + 10 ** (self.get_sinr(link) / 10))
 
 
-    def plot_network(self, plane="xy", annotate=False, ax=None):
+    def plot(self, plane="xy", show_label=False, ax=None):
         """Plot the network."""
-
-        # loop over all nodes
-        # plot their position (as 'O') as well as the downlink (as '->')
 
         plot_coords = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
 
@@ -105,19 +129,19 @@ class Network:
             fig, ax = plt.subplots()
         for node, value in self.nodes.items():
             # plot nodes
-            node_loc = node.get_location()[plot_coords]
+            node_loc = node.location[plot_coords]
             # ax.scatter(*node_loc[plot_coords], "o", label=node.name)
             ax.scatter(
                 *node_loc, s=50, facecolors="r", label=node.name
             )
-            if annotate:
+            if show_label:
                 ax.annotate(
                     node.name,
                     node_loc[plot_coords],
                 )
             # plot downlink
             for dl, link in value["dl"]:
-                dl_loc = dl.get_location()[plot_coords]
+                dl_loc = dl.location[plot_coords]
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     "k:",
@@ -127,7 +151,7 @@ class Network:
                     "kD",
                     label=dl.name,
                 )
-                if annotate:
+                if show_label:
                     offset = np.random.uniform(dl_loc - node_loc) * 0.1
                     ax.annotate(
                         link.name,
@@ -141,21 +165,21 @@ class Network:
             plt.show()
         return fig, ax
 
-    def plot_network_3d(self, ax=None, annotate=False, **kwargs):
+    def plot_3d(self, ax=None, show_label=False, **kwargs):
         """Plot the network in 3D."""
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, **kwargs)
         for node, value in self.nodes.items():
             # plot nodes
-            node_loc = node.get_location()
+            node_loc = node.location
             ax.scatter(
                 *node_loc, s=50, facecolors="r", label=node.name
             )
-            if annotate:
+            if show_label:
                 ax.text(*node_loc, node.name)
             # plot downlink
             for dl, link in value["dl"]:
-                dl_loc = dl.get_location()
+                dl_loc = dl.location
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     "k:",
@@ -165,7 +189,7 @@ class Network:
                     "b*",
                     label=dl.name,
                 )
-                if annotate:
+                if show_label:
                     ax.text(*(dl_loc + node_loc) / 2, link.name)
         ax.set_xlabel("X-axis")
         ax.set_ylabel("Y-axis")

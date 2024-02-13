@@ -22,7 +22,6 @@ class LosChannel(Channel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = "LosChannel"
         self.az = 0
         self.el = 0
         self.is_channel_energy_normalized = True
@@ -74,8 +73,8 @@ class LosChannel(Channel):
                 Elevation angle in degrees depending the transmitter
         """
 
-        atx_center = self.tx.get_array_center()
-        arx_center = self.rx.get_array_center()
+        atx_center = self.tx.array_center
+        arx_center = self.rx.array_center
         _, az, el = self._get_relative_position(atx_center, arx_center)
         self.az = az
         self.el = el

@@ -21,8 +21,11 @@ class Channel:
         channel_energy_is_normalized (bool): Indicates if the channel energy is normalized.
     """
 
-    def __init__(self, tx=None, rx=None, *args, **kwargs):
-        self.name = "BaseChannel"
+    def __init__(self, tx=None, rx=None, name = None, *args, **kwargs):
+        # use class name as default name
+        self.name = name
+        if name is None:
+            self.name = self.__class__.__name__
         self.tx = tx
         self.rx = rx
         self.channel_matrix = None

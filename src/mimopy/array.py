@@ -36,6 +36,28 @@ class Array:
     def __len__(self):
         return self.num_antennas
 
+    @property
+    def array_center(self):
+        """Returns the center of the array."""
+        return np.mean(self.coordinates, axis=0)
+
+    @array_center.setter
+    def array_center(self, center):
+        """Set the center of the array."""
+        delta_center = center - self.array_center
+        self.coordinates += delta_center
+
+    @property
+    def location(self):
+        """Returns the location of the array."""
+        return np.mean(self.coordinates, axis=0)
+    
+    @location.setter
+    def location(self, location):
+        """Set the location of the array."""
+        delta_location = location - self.location
+        self.coordinates += delta_location
+
     @classmethod
     def initialize_ula(cls, num_antennas, ax="x", array_center=[0, 0, 0], **kwargs):
         """Empties the array and creates a half-wavelength spaced,
@@ -56,7 +78,7 @@ class Array:
                         np.arange(num_antennas),
                         np.zeros(num_antennas),
                         np.zeros(num_antennas),
-                    ] 
+                    ]
                 ).T
                 / 2
             )
@@ -84,9 +106,10 @@ class Array:
             )
         else:
             raise ValueError("ax must be 'x', 'y' or 'z'")
-        coordinates = cls._translate_coordinates(coordinates) 
-        coordinates = cls._translate_coordinates(coordinates, array_center)
+        # coordinates = cls._translate_coordinates(coordinates)
+        # coordinates = cls._translate_coordinates(coordinates, array_center)
         ula = cls(num_antennas, coordinates)
+        ula.array_center = array_center
         for kwarg in kwargs:
             ula.__setattr__(kwarg, kwargs[kwarg])
         return ula
@@ -243,62 +266,65 @@ class Array:
         self.num_antennas += coordinates.shape[0]
         self.weights = np.concatenate((self.weights, np.ones(coordinates.shape[0])))
 
-    def remove_elements(self, coordinates):
-        """Remove antennas from the array.
+    def remove_elements(self, coordinates=None, indices=None):
+        """Remove antennas from the array by coordinates or indices.
 
         Parameters
         ----------
-        coordinates : array_like
+        coordinates : array_like, optional
             Coordinates of the antennas to be removed. The shape of the array must be (num_antennas, 3).
-        """
-        indices = self._match_coordinates(coordinates)
-        self.coordinates = np.delete(self.coordinates, indices, axis=0)
-        self.weights = np.delete(self.weights, indices, axis=0)
-        self.num_antennas -= len(indices)
+        indices : array_like, optional
+            Indices of the antennas to be removed."""
 
-    def remove_elements_by_idx(self, indices):
-        """Remove antennas from the array.
+        def _remove_elements_by_coord(self, coordinates):
+            indices = self._match_coordinates(coordinates)
+            self.coordinates = np.delete(self.coordinates, indices, axis=0)
+            self.weights = np.delete(self.weights, indices, axis=0)
+            self.num_antennas -= len(indices)
 
-        Parameters
-        ----------
-        indices : array_like
-            Indices of the antennas to be removed. The shape of the array must be (num_antennas, 3).
-        """
-        self.coordinates = np.delete(self.coordinates, indices, axis=0)
-        self.weights = np.delete(self.weights, indices, axis=0)
-        self.num_antennas -= len(indices)
+        def _remove_elements_by_idx(self, indices):
+            self.coordinates = np.delete(self.coordinates, indices, axis=0)
+            self.weights = np.delete(self.weights, indices, axis=0)
+            self.num_antennas -= len(indices)
 
-    @staticmethod
-    def _translate_coordinates(coordinates, shift=None):
-        """Shift all elements of the array by the given coordinates.
+        if coordinates is not None:
+            _remove_elements_by_coord(coordinates)
+        elif indices is not None:
+            _remove_elements_by_idx(indices)
+        else:
+            raise ValueError("Either coordinates or indices must be given")
 
-        Parameters
-        ----------
-        coordinates: array_like
-            Coordinates of the array to be shifted.
-        shift: array_like, optional
-            Coordinates by which the array is to be shifted. If not given, the
-            array is centered at the origin.
-        """
-        if shift is None:
-            shift = -np.mean(coordinates, axis=0)
-        shift = np.asarray(shift).reshape(1, -1)
-        coordinates += shift
-        return coordinates
+    # @staticmethod
+    # def _translate_coordinates(coordinates, shift=None):
+    #     """Shift all elements of the array by the given coordinates.
 
-    def translate(self, coordinates=None):
-        """Shift all elements of the array by the given coordinates.
+    #     Parameters
+    #     ----------
+    #     coordinates: array_like
+    #         Coordinates of the array to be shifted.
+    #     shift: array_like, optional
+    #         Coordinates by which the array is to be shifted. If not given, the
+    #         array is centered at the origin.
+    #     """
+    #     if shift is None:
+    #         shift = -np.mean(coordinates, axis=0)
+    #     shift = np.asarray(shift).reshape(1, -1)
+    #     coordinates += shift
+    #     return coordinates
 
-        Parameters
-        ----------
-        coordinates: array_like, optional
-            Coordinates by which the array is to be shifted. If not given, the
-            array is centered at the origin.
-        """
-        if coordinates is None:
-            coordinates = -np.mean(self.coordinates, axis=0)
-        self.coordinates += coordinates
-        return coordinates
+    # def translate(self, coordinates=None):
+    #     """Shift all elements of the array by the given coordinates.
+
+    #     Parameters
+    #     ----------
+    #     coordinates: array_like, optional
+    #         Coordinates by which the array is to be shifted. If not given, the
+    #         array is centered at the origin.
+    #     """
+    #     if coordinates is None:
+    #         coordinates = -np.mean(self.coordinates, axis=0)
+    #     self.coordinates += coordinates
+    #     return coordinates
 
     def _rotate(self, coordinates, x_angle, y_angle, z_angle):
         """Rotate the array by the given angles.
@@ -367,14 +393,6 @@ class Array:
             new_array = self.copy()
             new_array._rotate(new_array.coordinates, x_angle, y_angle, z_angle)
             return new_array
-
-    def get_array_center(self):
-        """Returns the center of the array."""
-        return np.mean(self.coordinates, axis=0)
-    
-    def get_location(self):
-        """Returns the location of the array."""
-        return np.mean(self.coordinates, axis=0)
 
     ############################
     # Get Array Properties

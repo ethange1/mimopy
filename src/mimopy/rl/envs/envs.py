@@ -1,5 +1,7 @@
-import numpy as np
+from collections import abc
+from collections.abc import Iterable
 
+import numpy as np
 import gymnasium as gym
 
 from ...array import Array
@@ -10,8 +12,10 @@ from ...network import Network
 class Environment:
     """RL environment class."""
 
-    def __init__(self, *args, **kwargs):
-        self.name = "Environment"
+    def __init__(self, name=None, *args, **kwargs):
+        self.name = name
+        if name is None:
+            self.name = self.__class__.__name__
         self.network = None
         self.target_links = []
         self.controlled_nodes = []
@@ -21,12 +25,14 @@ class Environment:
         self.tolerance_decay = 0.1
         self.target = None
         self.best_meas = None
+        self.metrics = "SINR"
         self.meas_buffer_size = 1
         self.init_weights = None
 
     def __str__(self):
         return self.name
 
+    # Network related methods
     @classmethod
     def from_network(cls, network):
         """Create an environment from a network."""
@@ -34,22 +40,52 @@ class Environment:
         env.network = network
         return env
 
-    def add_target_link(self, link):
+    def add_target_link(self, links):
         """Add a target link to the environment."""
-        self.target_links.append(link)
+        if isinstance(links, Iterable):
+            for link in links:
+                if link not in self.target_links:
+                    self.target_links.append(link)
+        else:
+            if links not in self.target_links:
+                self.target_links.append(links)
 
-    def remove_target_link(self, link):
+    def remove_target_link(self, links):
         """Remove a target link from the environment."""
-        self.target_links.remove(link)
+        if isinstance(links, Iterable):
+            for link in links:
+                self.target_links.remove(link)
+        else:
+            self.target_links.remove(links)
 
-    def add_controlled_node(self, node):
+    def add_controlled_node(self, nodes):
         """Add a controlled node to the environment."""
-        self.controlled_nodes.append(node)
+        if isinstance(nodes, Iterable):
+            for node in nodes:
+                if node not in self.controlled_nodes:
+                    self.controlled_nodes.append(node)
+        else:
+            if nodes not in self.controlled_nodes:
+                self.controlled_nodes.append(nodes)
 
-    def remove_controlled_node(self, node):
+    def remove_controlled_node(self, nodes):
         """Remove a controlled node from the environment."""
-        self.controlled_nodes.remove(node)
+        if isinstance(nodes, Iterable):
+            for node in nodes:
+                self.controlled_nodes.remove(node)
+        else:
+            self.controlled_nodes.remove(nodes)
 
+    def plot(self, plane="xy", **kwargs):
+        """Plot the environment and highlight the controlled nodes and target links."""
+        plot_coords = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
+        fig, ax = self.network.plot(plane=plane, **kwargs)
+        for node in self.controlled_nodes:
+            node
+
+
+
+    # Gym related methods
     @property
     def action_space(self):
         """Return the action space based on the controlled nodes."""
@@ -147,16 +183,16 @@ class Environment:
                 self.best_meas.pop(0)
         return reward
 
-
     def step(self, action):
         self._update_weights(action)
         obs = self._get_obs()
-        reward = self._get_reward()
+        meas = np.sum(obs[self.metrics])
+        reward = self._get_reward(meas)
         done = self._get_done()
         if done and self.tolerance_decay:
             self._update_tolerance()
         return obs, reward, done, self._get_info()
-    
+
     def reset(self):
         self.best_meas = None
         for node in self.controlled_nodes:
