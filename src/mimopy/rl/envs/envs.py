@@ -2,9 +2,9 @@ import numpy as np
 
 import gymnasium as gym
 
-from ..array import Array
-from ..channel import *
-from ..network import Network
+from ...array import Array
+from ...channel import *
+from ...network import Network
 
 
 class Environment:
@@ -22,6 +22,7 @@ class Environment:
         self.target = None
         self.best_meas = None
         self.meas_buffer_size = 1
+        self.init_weights = None
 
     def __str__(self):
         return self.name
@@ -155,3 +156,8 @@ class Environment:
         if done and self.tolerance_decay:
             self._update_tolerance()
         return obs, reward, done, self._get_info()
+    
+    def reset(self):
+        self.best_meas = None
+        for node in self.controlled_nodes:
+            node.set_weights(np.ones(node.num_antennas))

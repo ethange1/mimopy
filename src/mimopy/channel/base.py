@@ -27,8 +27,6 @@ class Channel:
         self.rx = rx
         self.channel_matrix = None
         self.noise_power = 0
-        self.noise_power_lin = 10 ** (self.noise_power / 10)
-
         self.propagation_velocity = 299792458
         self.carrier_frequency = 1e9
         self.carrier_wavelength = self.propagation_velocity / self.carrier_frequency
@@ -47,23 +45,13 @@ class Channel:
     def __repr__(self):
         return self.name
 
-    def set_tx(self, tx):
-        """Set the transmit array of the channel.
-
-        Parameters
-        ----------
-            tx (Array): Transmit array.
-        """
-        self.tx = tx
-
-    def set_rx(self, rx):
-        """Set the receive array of the channel.
-
-        Parameters
-        ----------
-            rx (Array): Receive array.
-        """
-        self.rx = rx
+    @property
+    def noise_power_lin(self):
+        return 10 ** (self.noise_power / 10)
+    
+    @noise_power_lin.setter
+    def noise_power_lin(self, noise_power_lin):
+        self.noise_power = 10 * log10(noise_power_lin)
 
     def set_arrays(self, tx, rx):
         """Set the transmit and receive arrays of the channel.
@@ -75,16 +63,6 @@ class Channel:
         """
         self.set_tx(tx)
         self.set_rx(rx)
-
-    def set_noise_power(self, noise_power):
-        """Set the noise power of the channel.
-
-        Parameters
-        ----------
-            noise_power (float): Noise power in dBm.
-        """
-        self.noise_power = noise_power
-        self.noise_power_lin = 10 ** (noise_power / 10)
 
     def set_carrier_frequency(self, carrier_frequency):
         """Set the carrier frequency of the channel.

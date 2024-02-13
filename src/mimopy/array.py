@@ -24,6 +24,8 @@ class Array:
         self.marker = "o"
         self.power = 1
         self.name = "Array"
+        self.spacing = 0.5
+        self.frequency = 1e9
 
     def __str__(self):
         return self.name
@@ -54,7 +56,7 @@ class Array:
                         np.arange(num_antennas),
                         np.zeros(num_antennas),
                         np.zeros(num_antennas),
-                    ]
+                    ] 
                 ).T
                 / 2
             )
@@ -82,7 +84,7 @@ class Array:
             )
         else:
             raise ValueError("ax must be 'x', 'y' or 'z'")
-        coordinates = cls._translate_coordinates(coordinates)
+        coordinates = cls._translate_coordinates(coordinates) 
         coordinates = cls._translate_coordinates(coordinates, array_center)
         ula = cls(num_antennas, coordinates)
         for kwarg in kwargs:

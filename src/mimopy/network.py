@@ -19,8 +19,8 @@ class Network:
             The rows are edges (link) and the cols are nodes.
     """
 
-    def __init__(self, *args, **kwargs):
-        self.name = "Network"
+    def __init__(self, name="Network", *args, **kwargs):
+        self.name = name
         self.links = []
         self.nodes = dict()
 
