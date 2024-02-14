@@ -47,6 +47,22 @@ class Channel:
     
     def __repr__(self):
         return self.name
+    
+    @property
+    def ul(self):
+        return self.tx
+    
+    @ul.setter
+    def ul(self, tx):
+        self.tx = tx
+    
+    @property
+    def dl(self):
+        return self.rx
+    
+    @dl.setter
+    def dl(self, rx):
+        self.rx = rx
 
     @property
     def noise_power_lin(self):

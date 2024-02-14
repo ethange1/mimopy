@@ -2,6 +2,8 @@ from collections import abc
 from collections.abc import Iterable
 
 import numpy as np
+from numpy import log10
+from matplotlib import pyplot as plt
 import gymnasium as gym
 
 from ...array import Array
@@ -78,12 +80,41 @@ class Environment:
 
     def plot(self, plane="xy", **kwargs):
         """Plot the environment and highlight the controlled nodes and target links."""
-        plot_coords = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
+        coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
         fig, ax = self.network.plot(plane=plane, **kwargs)
         for node in self.controlled_nodes:
-            node
-
-
+            ax.scatter(
+                *node.location[coord_idx], s=75, facecolors="b", label="Controlled Node"
+            )
+            # ax.legend()
+        for link in self.target_links:
+            ul_loc = link.tx.location[coord_idx]
+            dl_loc = link.rx.location[coord_idx]
+            ax.plot(
+                [ul_loc[0], dl_loc[0]],
+                [ul_loc[1], dl_loc[1]],
+                "c-",
+                label="Target Link",
+            )
+            # ax.legend()
+        plt.show()
+    
+    def plot_3d(self, **kwargs):
+        """Plot the environment in 3D and highlight the controlled nodes and target links."""
+        fig, ax = self.network.plot_3d(**kwargs)
+        for node in self.controlled_nodes:
+            ax.scatter(*node.location, s=75, facecolors="b", label="Controlled Node")
+            # ax.legend()
+        for link in self.target_links:
+            ax.plot(
+                [link.tx.location[0], link.rx.location[0]],
+                [link.tx.location[1], link.rx.location[1]],
+                [link.tx.location[2], link.rx.location[2]],
+                "c-",
+                label="Target Link",
+            )
+            # ax.legend()
+        plt.show()
 
     # Gym related methods
     @property

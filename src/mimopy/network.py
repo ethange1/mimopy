@@ -123,32 +123,32 @@ class Network:
     def plot(self, plane="xy", show_label=False, ax=None):
         """Plot the network."""
 
-        plot_coords = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
+        coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
 
         if ax is None:
             fig, ax = plt.subplots()
         for node, value in self.nodes.items():
             # plot nodes
-            node_loc = node.location[plot_coords]
-            # ax.scatter(*node_loc[plot_coords], "o", label=node.name)
+            node_loc = node.location[coord_idx]
+            # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
             ax.scatter(
-                *node_loc, s=50, facecolors="r", label=node.name
+                *node_loc, s=70, facecolors="k", label=node.name
             )
             if show_label:
                 ax.annotate(
                     node.name,
-                    node_loc[plot_coords],
+                    node_loc[coord_idx],
                 )
             # plot downlink
             for dl, link in value["dl"]:
-                dl_loc = dl.location[plot_coords]
+                dl_loc = dl.location[coord_idx]
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     "k:",
                 )
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
-                    "kD",
+                    "m*",
                     label=dl.name,
                 )
                 if show_label:
@@ -160,7 +160,7 @@ class Network:
                     )
         plt.xlabel(f"{plane[0]}-axis")
         plt.ylabel(f"{plane[1]}-axis")
-        plt.title(f"{self.name} Network")
+        plt.title(f"{self.name}")
         if ax is None:
             plt.show()
         return fig, ax
@@ -173,7 +173,7 @@ class Network:
             # plot nodes
             node_loc = node.location
             ax.scatter(
-                *node_loc, s=50, facecolors="r", label=node.name
+                *node_loc, s=70, facecolors="k", label=node.name
             )
             if show_label:
                 ax.text(*node_loc, node.name)
@@ -186,7 +186,7 @@ class Network:
                 )
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
-                    "b*",
+                    "m*",
                     label=dl.name,
                 )
                 if show_label:
