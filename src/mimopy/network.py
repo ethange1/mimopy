@@ -102,6 +102,7 @@ class Network:
         for _, ch in self.nodes[link.rx]["ul"]:
             if ch != link:
                 interference += ch.get_bf_gain()
+        return interference
 
     def get_inr(self, link) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""

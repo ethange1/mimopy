@@ -32,7 +32,7 @@ class LosChannel(Channel):
         self.set_angular_separation()
         tx_response = self.tx.get_array_response(self.az, self.el)
         rx_response = self.rx.get_array_response(self.az + np.pi, self.el + np.pi)
-        H = np.outer(tx_response, rx_response)
+        H = np.outer(tx_response, rx_response).T
         self.set_channel_matrix(H)
 
     def get_bf_noise(self) -> float:

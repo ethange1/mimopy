@@ -6,13 +6,15 @@ from numpy import log10
 from matplotlib import pyplot as plt
 import gymnasium as gym
 
-from ...array import Array
-from ...channel import *
-from ...network import Network
+from ..array import Array
+from ..channel import *
+from ..network import Network
 
 
-class Environment:
+class Environment(gym.Env):
     """RL environment class."""
+
+    metadata = {"render_modes": ["human", "rgb_array"]}
 
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
@@ -25,21 +27,31 @@ class Environment:
         self.max_phase_change = 36  # degrees
         self.tolerance = 1
         self.tolerance_decay = 0.1
-        self.target = None
-        self.best_meas = None
-        self.metrics = "SINR"
-        self.meas_buffer_size = 1
-        self.init_weights = None
+        self.metrics = "sinr"
+        self.meas_buffer_size = 1  # number of measurements to keep
+        self.target_meas = None
+        self.best_meas = []
+        self.best_weights = []
 
     def __str__(self):
         return self.name
 
+    @property
+    def controlled_weights(self):
+        return [node.weights for node in self.controlled_nodes]
+
     # Network related methods
     @classmethod
-    def from_network(cls, network):
+    def from_network(cls, network, target_link, controlled_nodes, *args, **kwargs):
         """Create an environment from a network."""
         env = cls()
         env.network = network
+        env.add_target_link(target_link)
+        env.add_controlled_node(controlled_nodes)
+        env.reset() #TODO: reset throws error
+        obs = env._get_obs() 
+        env.best_meas = [obs[env.metrics]]
+        env.best_weights = [env.controlled_weights]
         return env
 
     def add_target_link(self, links):
@@ -88,6 +100,7 @@ class Environment:
             )
             # ax.legend()
         for link in self.target_links:
+
             ul_loc = link.tx.location[coord_idx]
             dl_loc = link.rx.location[coord_idx]
             ax.plot(
@@ -98,7 +111,7 @@ class Environment:
             )
             # ax.legend()
         plt.show()
-    
+
     def plot_3d(self, **kwargs):
         """Plot the environment in 3D and highlight the controlled nodes and target links."""
         fig, ax = self.network.plot_3d(**kwargs)
@@ -122,7 +135,7 @@ class Environment:
         """Return the action space based on the controlled nodes."""
         # get the total number of antennas for all controlled nodes
         total_num_antennas = np.sum(
-            [node.num_antennas for node in self.controlled_nodes]
+            [node.num_antennas for node in self.controlled_nodes], dtype=np.int8
         )
         amp_phase_change = np.array(
             [self.max_amp_change, self.max_phase_change * np.pi / 180], dtype=np.float32
@@ -141,13 +154,19 @@ class Environment:
     def observation_space(self):
         """Return the observation space based on the target links."""
         total_num_antennas = np.sum(
-            [node.num_antennas for node in self.controlled_nodes]
+            [node.num_antennas for node in self.controlled_nodes], dtype=np.int8
         )
 
         return gym.spaces.Dict(
             {
-                "SINR": gym.spaces.Box(
+                "sinr": gym.spaces.Box(
                     low=-np.inf, high=np.inf, shape=(len(self.target_links),)
+                ),
+                "spectral_effeciency": gym.spaces.Box(
+                    low=0, high=np.inf, shape=(len(self.target_links),)
+                ),
+                "gain": gym.spaces.Box(
+                    low=0, high=np.inf, shape=(len(self.target_links),)
                 ),
                 "amp": gym.spaces.Box(low=0, high=np.inf, shape=(total_num_antennas,)),
                 "phase": gym.spaces.Box(
@@ -161,16 +180,50 @@ class Environment:
     def observation_space(self, value):
         raise AttributeError("observation_space is read-only")
 
+    def _update_weights(self, action):
+        """Update the weights of the controlled nodes."""
+        # split the action into amplitude and phase changes
+        nums_antennas = [node.num_antennas for node in self.controlled_nodes]
+        changes = np.split(
+            action.reshape((2, -1)), np.cumsum(nums_antennas)[:-1], axis=1
+        )
+        for node, change in zip(self.controlled_nodes, changes):
+            # clip the changes to the max values
+            new_amp = np.clip(np.abs(node.weights) + change[0], 0, node.power)
+            new_phase = np.angle(node.weights) + change[1]
+            new_phase /= new_phase[0]  # normalize the phase to the first antenna
+            node.set_weights(new_amp * np.exp(1j * new_phase))
+
+    def _update_tolerance(self):
+        self.tolerance *= 1 - self.tolerance_decay
+
+    def _get_reward(self, meas):
+        if len(self.best_meas) == 0:
+            self.best_meas.append(meas)
+            self.best_weights.append(self.controlled_weights)
+            return 0
+        reward = meas - np.mean(self.best_meas)
+        if reward > 0:
+            self.best_meas.append(meas)
+            self.best_weights.append(self.controlled_weights)
+            if len(self.best_meas) > self.meas_buffer_size:
+                self.best_meas.pop(0)
+                self.best_weights.pop(0)
+        return reward
+
     def _get_obs(self):
         return {
-            "SINR": np.array(
+            "sinr": np.mean(
                 [self.network.get_sinr(link) for link in self.target_links]
             ),
-            "R": np.array(
+            "spectral_effeciency": np.mean(
                 [
                     self.network.get_spectral_efﬁciency(link)
                     for link in self.target_links
                 ]
+            ),
+            "gain": np.mean(
+                [self.network.get_bf_gain(link) for link in self.target_links]
             ),
             "amp": np.concatenate(
                 [np.abs(node.weights) for node in self.controlled_nodes]
@@ -182,37 +235,14 @@ class Environment:
 
     def _get_info(self):
         return {
-            "snr_target": self.snr_target,
+            "target_meas": self.target_meas,
             "tolerance": self.tolerance,
+            "best_meas": self.best_meas[-1],
+            "best_weights": self.best_weights[-1],
         }
 
-    def _update_weights(self, action):
-        """Update the weights of the controlled nodes."""
-        # split the action into amplitude and phase changes
-        nums_antennas = [node.num_antennas for node in self.controlled_nodes]
-        changes = np.split(
-            action.reshape((2, -1)), np.cumsum(nums_antennas)[:-1], axis=1
-        )
-        for node, change in zip(self.controlled_nodes, changes):
-            # clip the changes to the max values
-            new_amp = np.clip(np.abs(node.weights) + change[0], 0, node.max_power)
-            new_phase = np.angle(node.weights) + change[1]
-            new_phase /= new_phase[0]  # normalize the phase to the first antenna
-            node.set_weights(new_amp * np.exp(1j * new_phase))
-
-    def _update_tolerance(self):
-        self.tolerance *= 1 - self.tolerance_decay
-
-    def _get_reward(self, meas):
-        if self.best_meas is None:
-            self.best_meas = meas
-            return 0
-        reward = meas - np.mean(self.best_meas)
-        if reward > 0:
-            self.best_meas.append(meas)
-            if len(self.best_meas) > self.meas_buffer_size:
-                self.best_meas.pop(0)
-        return reward
+    def _get_done(self):
+        return self.target_meas - np.mean(self.best_meas) < self.tolerance
 
     def step(self, action):
         self._update_weights(action)
@@ -222,9 +252,12 @@ class Environment:
         done = self._get_done()
         if done and self.tolerance_decay:
             self._update_tolerance()
-        return obs, reward, done, self._get_info()
+        return obs, reward, done, False, self._get_info()
 
-    def reset(self):
-        self.best_meas = None
+    def reset(self, **kwargs):
         for node in self.controlled_nodes:
             node.set_weights(np.ones(node.num_antennas))
+        obs = self._get_obs()
+        self.best_meas = [obs[self.metrics]]
+        self.best_weights = [self.controlled_weights]
+        return obs, self._get_info()

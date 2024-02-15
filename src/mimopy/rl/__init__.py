@@ -1,1 +1,1 @@
-from .envs.envs import *
+from .envs import *

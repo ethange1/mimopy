@@ -117,15 +117,6 @@ class Channel:
         self.propagation_velocity = propagation_velocity
         self.carrier_wavelength = propagation_velocity / self.carrier_frequency
 
-    def set_name(self, name):
-        """Set the name of the channel.
-
-        Parameters
-        ----------
-            name (str): Name of the channel.
-        """
-        self.name = name
-
     def _normalize_channel_energy(self, channel_matrix):
         """Normalize the power of the channel matrix to the normalized transmit power.
 
@@ -181,8 +172,8 @@ class Channel:
         """Get the beamforming gain of the channel  in dBm."""
         f = self.tx.get_weights().reshape(-1, 1)
         H = self.get_channel_matrix()
-        w = self.rx.get_weights().reshape(1, -1)
-        P = self.tx.get_power()
+        w = self.rx.get_weights().reshape(-1, 1)
+        P = self.tx.power
         return 10 * log10(P * np.abs(w.conj().T @ H @ f) ** 2)
 
     def get_snr(self):
