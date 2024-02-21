@@ -42,7 +42,7 @@ class Environment(gym.Env):
 
     # Network related methods
     @classmethod
-    def from_network(cls, network, target_link, controlled_nodes):
+    def from_network(cls, network: Network, target_link, controlled_nodes):
         """Create an environment from a network."""
         env = cls()
         env.network = network
@@ -260,7 +260,6 @@ class Environment(gym.Env):
     def step(self, action):
         self._update_weights(action)
         obs = self._get_obs()
-        print(obs)
         meas = np.sum(obs[self.metrics])
         reward = self._get_reward(meas)
         done = self._get_done()

@@ -30,6 +30,9 @@ class Network:
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return self.name
+    
     def add_node(self, node: Array):
         """Add a node to the network."""
         if node not in self.nodes:
@@ -91,6 +94,7 @@ class Network:
         """Get the beamforming gain of the link in dB."""
         return link.get_bf_gain()
 
+    
     def get_snr(self, link) -> float:
         """Get the signal-to-noise ratio (SNR) of the link in dB."""
         return self.get_bf_gain(link) - link.get_bf_noise()

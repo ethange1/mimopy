@@ -176,9 +176,6 @@ class Channel:
         P = self.tx.power
         return 10 * log10(P * np.abs(w.conj().T @ H @ f) ** 2)
 
-    def get_snr(self):
-        raise NotImplementedError
-
     def realize(self):
         """Realize the channel."""
         raise NotImplementedError

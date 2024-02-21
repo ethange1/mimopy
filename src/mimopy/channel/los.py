@@ -41,21 +41,22 @@ class LosChannel(Channel):
         """Signal-to-noise ratio (SNR) of the channel."""
         return self.bf_gain - self.bf_noise
 
-    # def get_bf_noise(self) -> float:
-    #     """Get the noise power after beamforming in dBm."""
-    #     w = self.rx.get_weights().reshape(1, -1)
-    #     return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
+    def get_bf_noise(self) -> float:
+        """Get the noise power after beamforming in dBm."""
+        w = self.rx.get_weights().reshape(1, -1)
+        return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
 
-    # def get_snr(self) -> float:
-    #     """Get the signal-to-noise ratio (SNR) of the channel. """
-    #     return self.get_bf_gain() - self.get_bf_noise()
+    def get_snr(self) -> float:
+        """Get the signal-to-noise ratio (SNR) of the channel. """
+        return self.get_bf_gain() - self.get_bf_noise()
 
     def realize(self):
         """Realize the channel."""
         self.set_angular_separation()
         tx_response = self.tx.get_array_response(self.az, self.el)
         rx_response = self.rx.get_array_response(self.az + np.pi, self.el + np.pi)
-        H = np.outer(tx_response, rx_response).T
+        # H = np.outer(tx_response, rx_response).T
+        H = np.outer(rx_response, tx_response.conj())
         self.set_channel_matrix(H)
 
     @staticmethod
