@@ -111,7 +111,7 @@ class Network:
     def get_sinr(self, link) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
         return (
-            self.get_snr(link)
+            self.get_bf_gain(link) 
             - self.get_interference(link)
             - link.get_bf_noise()
         )

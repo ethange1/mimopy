@@ -16,7 +16,7 @@ class Environment(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"]}
 
-    def __init__(self, name=None, *args, **kwargs):
+    def __init__(self, name=None):
         self.name = name
         if name is None:
             self.name = self.__class__.__name__
@@ -42,14 +42,14 @@ class Environment(gym.Env):
 
     # Network related methods
     @classmethod
-    def from_network(cls, network, target_link, controlled_nodes, *args, **kwargs):
+    def from_network(cls, network, target_link, controlled_nodes):
         """Create an environment from a network."""
         env = cls()
         env.network = network
         env.add_target_link(target_link)
         env.add_controlled_node(controlled_nodes)
-        env.reset() #TODO: reset throws error
-        obs = env._get_obs() 
+        env.reset()
+        obs = env._get_obs()
         env.best_meas = [obs[env.metrics]]
         env.best_weights = [env.controlled_weights]
         return env
@@ -138,7 +138,7 @@ class Environment(gym.Env):
             [node.num_antennas for node in self.controlled_nodes], dtype=np.int8
         )
         amp_phase_change = np.array(
-            [self.max_amp_change, self.max_phase_change * np.pi / 180], dtype=np.float32
+            [self.max_amp_change, self.max_phase_change * np.pi / 180], dtype=np.float16
         )
         # create the action space via outer product (2x1) x (1xN) -> (2xN)
         # N is the total number of controlled antennas across all nodes
@@ -160,17 +160,29 @@ class Environment(gym.Env):
         return gym.spaces.Dict(
             {
                 "sinr": gym.spaces.Box(
-                    low=-np.inf, high=np.inf, shape=(len(self.target_links),)
+                    low=-np.inf,
+                    high=np.inf,
+                    shape=(len(self.target_links),),
+                    dtype=np.float16,
                 ),
                 "spectral_effeciency": gym.spaces.Box(
-                    low=0, high=np.inf, shape=(len(self.target_links),)
+                    low=-np.inf,
+                    high=np.inf,
+                    shape=(len(self.target_links),),
+                    dtype=np.float16,
                 ),
                 "gain": gym.spaces.Box(
-                    low=0, high=np.inf, shape=(len(self.target_links),)
+                    low=-np.inf,
+                    high=np.inf,
+                    shape=(len(self.target_links),),
+                    dtype=np.float16,
                 ),
                 "amp": gym.spaces.Box(low=0, high=np.inf, shape=(total_num_antennas,)),
                 "phase": gym.spaces.Box(
-                    low=-np.pi, high=np.pi, shape=(total_num_antennas,)
+                    low=-np.pi,
+                    high=np.pi,
+                    shape=(total_num_antennas,),
+                    dtype=np.float16,
                 ),
             }
         )
@@ -191,7 +203,7 @@ class Environment(gym.Env):
             # clip the changes to the max values
             new_amp = np.clip(np.abs(node.weights) + change[0], 0, node.power)
             new_phase = np.angle(node.weights) + change[1]
-            new_phase /= new_phase[0]  # normalize the phase to the first antenna
+            new_phase -= new_phase[0]  # normalize the phase to the first antenna
             node.set_weights(new_amp * np.exp(1j * new_phase))
 
     def _update_tolerance(self):
@@ -212,6 +224,7 @@ class Environment(gym.Env):
         return reward
 
     def _get_obs(self):
+        # TODO: sinr calculation is off. Channel matrix and weights seems to update fine
         return {
             "sinr": np.mean(
                 [self.network.get_sinr(link) for link in self.target_links]
@@ -247,6 +260,7 @@ class Environment(gym.Env):
     def step(self, action):
         self._update_weights(action)
         obs = self._get_obs()
+        print(obs)
         meas = np.sum(obs[self.metrics])
         reward = self._get_reward(meas)
         done = self._get_done()

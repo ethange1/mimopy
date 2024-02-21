@@ -51,7 +51,7 @@ class Array:
     def location(self):
         """Returns the location of the array."""
         return np.mean(self.coordinates, axis=0)
-    
+
     @location.setter
     def location(self, location):
         """Set the location of the array."""
