@@ -530,10 +530,10 @@ class Array:
         # kwargs["label"] = r"Elevation = {} deg".format(el)
 
         if ax == None:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(**kwargs)
         if polar:
             ax = plt.gca(projection="polar")
-            ax.plot(az, array_response, **kwargs)
+            ax.plot(az, array_response)
             ax.set_theta_zero_location("N")
             ax.set_theta_direction(-1)
             ax.set_rlabel_position(0)
@@ -544,7 +544,7 @@ class Array:
             # ax.set_ylim(-(max(array_response)), max(array_response) + 10)
         ax.set_xlabel("Azimuth (deg)")
         ax.set_ylabel("Gain (dB)")
-        title = f"Array Pattern at Elevation = {el} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
+        title = f"Elevation = {el} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
         ax.set_title(title)
         ax.grid(True)
         if weights is not None:

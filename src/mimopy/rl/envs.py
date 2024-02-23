@@ -130,10 +130,21 @@ class Environment(gym.Env):
             # ax.legend()
         plt.show()
     
-    def plot_beam_pattern(self, **kwargs):
+    def plot_gain(self, best_gain=False, **kwargs):
         """Plot the beam pattern of the controlled nodes."""
-        for node in self.controlled_nodes:
-            node.plot_beam_pattern(**kwargs)
+        num_plots = len(self.controlled_nodes)
+        num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
+        num_rows = np.ceil(num_plots / num_cols).astype(int)
+        fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
+        for node, ax in zip(self.controlled_nodes, np.ravel(axes)):
+            if best_gain:
+                node.plot_gain(ax=ax, weights=self.best_weights[-1])
+            else:
+                node.plot_gain(ax=ax)
+            title = ax.get_title()
+            ax.set_title(f"{node.name}: {title}")
+        plt.show()
+      
 
     # Gym related methods
     @property
@@ -293,9 +304,12 @@ class Environment(gym.Env):
 
     def render(self, mode="human"):
         if mode == "human":
-            print(self._get_info())
-            
-
+            # print(self._get_info())
+            # clear previous plots
+            plt.close("all")
+            self.plot(dpi=150)
+            self.plot_gain(best_gain=True, dpi=300)
+            plt.show()
         elif mode == "rgb_array":
             raise NotImplementedError
         else:
