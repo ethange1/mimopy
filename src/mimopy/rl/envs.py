@@ -27,6 +27,7 @@ class Environment(gym.Env):
         self.max_phase_change = 36  # degrees
         self.tolerance = 1
         self.tolerance_decay = 0.1
+        self.tolerance_update_factor = 1.5  # factor by which trigger tolerance update
         self.metrics = "sinr"
         self.meas_buffer_size = 1  # number of measurements to keep
         self.target_meas = None
@@ -128,6 +129,11 @@ class Environment(gym.Env):
             )
             # ax.legend()
         plt.show()
+    
+    def plot_beam_pattern(self, **kwargs):
+        """Plot the beam pattern of the controlled nodes."""
+        for node in self.controlled_nodes:
+            node.plot_beam_pattern(**kwargs)
 
     # Gym related methods
     @property
@@ -138,12 +144,13 @@ class Environment(gym.Env):
             [node.num_antennas for node in self.controlled_nodes], dtype=np.int8
         )
         amp_phase_change = np.array(
-            [self.max_amp_change, self.max_phase_change * np.pi / 180], dtype=np.float16
+            [self.max_amp_change, self.max_phase_change * np.pi / 180]
         )
         # create the action space via outer product (2x1) x (1xN) -> (2xN)
         # N is the total number of controlled antennas across all nodes
         space = np.outer(amp_phase_change, np.ones(total_num_antennas))
-        return gym.spaces.Box(low=-space, high=space, dtype=np.float16)
+        space = np.float16(space)
+        return gym.spaces.Box(low=-space, high=space)
 
     @action_space.setter
     # read only property
@@ -225,6 +232,7 @@ class Environment(gym.Env):
 
     def _get_obs(self):
         # TODO: sinr calculation is off. Channel matrix and weights seems to update fine
+        # Seems to be solved?
         return {
             "sinr": np.mean(
                 [self.network.get_sinr(link) for link in self.target_links]
@@ -253,9 +261,19 @@ class Environment(gym.Env):
             "best_meas": self.best_meas[-1],
             "best_weights": self.best_weights[-1],
         }
+    
+    def _get_state(self):
+        """return a copy of the environment state."""
+        return
 
     def _get_done(self):
-        return self.target_meas - np.mean(self.best_meas) < self.tolerance
+        dist = self.target_meas - np.mean(self.best_meas)
+        if (
+            dist < self.tolerance * self.tolerance_update_factor
+            and self.tolerance > 0.01
+        ):
+            self._update_tolerance()
+        return dist < self.tolerance
 
     def step(self, action):
         self._update_weights(action)
@@ -263,8 +281,6 @@ class Environment(gym.Env):
         meas = np.sum(obs[self.metrics])
         reward = self._get_reward(meas)
         done = self._get_done()
-        if done and self.tolerance_decay:
-            self._update_tolerance()
         return obs, reward, done, False, self._get_info()
 
     def reset(self, **kwargs):
@@ -274,3 +290,14 @@ class Environment(gym.Env):
         self.best_meas = [obs[self.metrics]]
         self.best_weights = [self.controlled_weights]
         return obs, self._get_info()
+
+    def render(self, mode="human"):
+        if mode == "human":
+            print(self._get_info())
+            
+
+        elif mode == "rgb_array":
+            raise NotImplementedError
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+        return None

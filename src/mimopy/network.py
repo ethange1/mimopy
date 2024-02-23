@@ -125,13 +125,13 @@ class Network:
         return log10(1 + 10 ** (self.get_sinr(link) / 10))
 
 
-    def plot(self, plane="xy", show_label=False, ax=None):
+    def plot(self, plane="xy", show_label=False, ax=None, **kwargs):
         """Plot the network."""
 
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
 
         if ax is None:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(**kwargs)
         for node, value in self.nodes.items():
             # plot nodes
             node_loc = node.location[coord_idx]
