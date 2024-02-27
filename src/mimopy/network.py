@@ -92,12 +92,12 @@ class Network:
 
     def get_bf_gain(self, link) -> float:
         """Get the beamforming gain of the link in dB."""
-        return link.get_bf_gain()
+        return float(link.get_bf_gain())
 
     
     def get_snr(self, link) -> float:
         """Get the signal-to-noise ratio (SNR) of the link in dB."""
-        return self.get_bf_gain(link) - link.get_bf_noise()
+        return float(self.get_bf_gain(link) - link.get_bf_noise())
 
     def get_interference(self, link) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
@@ -106,15 +106,15 @@ class Network:
         for _, ch in self.nodes[link.rx]["ul"]:
             if ch != link:
                 interference += ch.get_bf_gain()
-        return interference
+        return float(interference)
 
     def get_inr(self, link) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
-        return self.get_interference(link) - link.get_bf_noise()
+        return float(self.get_interference(link) - link.get_bf_noise())
 
     def get_sinr(self, link) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
-        return (
+        return float(
             self.get_bf_gain(link) 
             - self.get_interference(link)
             - link.get_bf_noise()
@@ -122,7 +122,7 @@ class Network:
     
     def get_spectral_efﬁciency(self, link) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
-        return log10(1 + 10 ** (self.get_sinr(link) / 10))
+        return float(log10(1 + 10 ** (self.get_sinr(link) / 10)))
 
 
     def plot(self, plane="xy", show_label=False, ax=None, **kwargs):
