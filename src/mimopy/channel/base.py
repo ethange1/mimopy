@@ -174,7 +174,8 @@ class Channel:
         H = self.get_channel_matrix()
         w = self.rx.get_weights().reshape(-1, 1)
         P = self.tx.power
-        return 10 * log10(P * np.abs(w.conj().T @ H @ f) ** 2)
+        bf_gain = 10 * log10(P * np.abs(w.conj().T @ H @ f) ** 2)
+        return float(bf_gain)
 
     def realize(self):
         """Realize the channel."""

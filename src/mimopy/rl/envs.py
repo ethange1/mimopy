@@ -48,8 +48,8 @@ class Environment(gym.Env):
         env = cls()
         env.network = network
         # Target link and controlled nodes are needed, otherwise reset() will break
-        env.add_target_link(target_links)
-        env.add_controlled_node(controlled_nodes)
+        env.add_target_links(target_links)
+        env.add_controlled_nodes(controlled_nodes)
         env.reset()
         obs = env._get_obs()
         env.best_meas = [obs[env.metrics]]
@@ -92,10 +92,10 @@ class Environment(gym.Env):
         else:
             self.controlled_nodes.remove(nodes)
 
-    def plot(self, plane="xy", **kwargs):
+    def plot(self, plane="xy", label=False, **kwargs):
         """Plot the environment and highlight the controlled nodes and target links."""
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
-        fig, ax = self.network.plot(plane=plane, **kwargs)
+        fig, ax = self.network.plot(plane=plane, label=label, **kwargs)
         for node in self.controlled_nodes:
             ax.scatter(
                 *node.location[coord_idx], s=75, facecolors="b", label="Controlled Node"
@@ -210,7 +210,11 @@ class Environment(gym.Env):
     def observation_space(self, value):
         raise AttributeError("observation_space is read-only")
 
-    def _update_weights(self, action):
+    # ========================================================================
+    # Update the following methods for the custom environment
+    # ========================================================================
+
+    def update_weights(self, action):
         """Update the weights of the controlled nodes."""
         # split the action into amplitude and phase changes
         nums_antennas = [node.num_antennas for node in self.controlled_nodes]
@@ -224,15 +228,24 @@ class Environment(gym.Env):
             new_phase -= new_phase[0]  # normalize the phase to the first antenna
             node.set_weights(new_amp * np.exp(1j * new_phase))
 
-    def _update_tolerance(self):
+    def update_tolerance(self):
         self.tolerance *= 1 - self.tolerance_decay
 
-    def _get_reward(self, meas):
+    def get_reward(self, meas):
+        return meas - np.mean(self.best_meas)
+
+    def process_meas(self, meas) -> float:
+        """Process the measurements. Called in step()."""
+        return np.mean(meas)
+
+    # ========================================================================
+
+    def _update_reward(self, meas):
         if len(self.best_meas) == 0:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
             return 0
-        reward = meas - np.mean(self.best_meas)
+        reward = self.get_reward(meas)
         if reward > 0:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
@@ -242,21 +255,12 @@ class Environment(gym.Env):
         return reward
 
     def _get_obs(self):
-        # TODO: sinr calculation is off. Channel matrix and weights seems to update fine
-        # Seems to be solved?
         return {
-            "sinr": np.mean(
-                [self.network.get_sinr(link) for link in self.target_links]
-            ),
-            "spectral_effeciency": np.mean(
-                [
-                    self.network.get_spectral_efﬁciency(link)
-                    for link in self.target_links
-                ]
-            ),
-            "gain": np.mean(
-                [self.network.get_bf_gain(link) for link in self.target_links]
-            ),
+            "sinr": [self.network.get_sinr(link) for link in self.target_links],
+            "spectral_effeciency": [
+                self.network.get_spectral_efﬁciency(link) for link in self.target_links
+            ],
+            "gain": [self.network.get_bf_gain(link) for link in self.target_links],
             "amp": np.concatenate(
                 [np.abs(node.weights) for node in self.controlled_nodes]
             ),
@@ -273,24 +277,17 @@ class Environment(gym.Env):
             "best_weights": self.best_weights[-1],
         }
 
-    def _get_state(self):
-        """return a copy of the environment state."""
-        return
-
     def _get_done(self):
         dist = self.target_meas - np.mean(self.best_meas)
-        if (
-            dist < self.tolerance * self.tolerance_update_factor
-            and self.tolerance > 0.01
-        ):
-            self._update_tolerance()
+        if dist < self.tolerance * self.tolerance_update_factor:
+            self.update_tolerance()
         return dist < self.tolerance
 
     def step(self, action):
-        self._update_weights(action)
+        self.update_weights(action)
         obs = self._get_obs()
-        meas = np.sum(obs[self.metrics])
-        reward = self._get_reward(meas)
+        meas = self.process_meas(obs[self.metrics])
+        reward = self._update_reward(meas)
         done = self._get_done()
         return obs, reward, done, False, self._get_info()
 
