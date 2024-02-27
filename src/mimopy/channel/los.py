@@ -29,26 +29,35 @@ class LosChannel(Channel):
 
     def __str__(self):
         return f"{self.name}"
-
-    @property
-    def bf_noise(self):
-        """Noise power after beamforming in dBm."""
-        w = self.rx.weights.reshape(1, -1)
-        return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
     
-    @property
-    def snr(self):
-        """Signal-to-noise ratio (SNR) of the channel."""
-        return self.bf_gain - self.bf_noise
+    def __repr__(self):
+        return f"{self.name}"
+    
+    # @property
+    # def bf_noise_lin(self):
+    #     """Noise power after beamforming in linear scale."""
+    #     w = self.rx.weights.reshape(1, -1)
+    #     return np.linalg.norm(w) ** 2 * self.noise_power_lin
 
-    def get_bf_noise(self) -> float:
-        """Get the noise power after beamforming in dBm."""
-        w = self.rx.get_weights().reshape(1, -1)
-        return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
+    # @property
+    # def bf_noise(self):
+    #     """Noise power after beamforming in dBm."""
+    #     w = self.rx.weights.reshape(1, -1)
+    #     return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
 
-    def get_snr(self) -> float:
-        """Get the signal-to-noise ratio (SNR) of the channel. """
-        return self.get_bf_gain() - self.get_bf_noise()
+
+    # def get_bf_noise(self, linear=False) -> float:
+    #     """Get the noise power after beamforming in dBm."""
+    #     w = self.rx.get_weights().reshape(1, -1)
+    #     if linear:
+    #         return np.linalg.norm(w) ** 2 * self.noise_power_lin
+    #     return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
+
+    # def get_snr(self, linear=False) -> float:
+    #     """Get the signal-to-noise ratio (SNR) of the channel. """
+    #     if linear:
+    #        return self.get_bf_gain(linear) / self.get_bf_noise(linear) 
+    #     return self.get_bf_gain() - self.get_bf_noise()
 
     def realize(self):
         """Realize the channel."""

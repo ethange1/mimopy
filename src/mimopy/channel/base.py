@@ -21,7 +21,7 @@ class Channel:
         channel_energy_is_normalized (bool): Indicates if the channel energy is normalized.
     """
 
-    def __init__(self, tx=None, rx=None, name = None, *args, **kwargs):
+    def __init__(self, tx=None, rx=None, name=None, *args, **kwargs):
         # use class name as default name
         self.name = name
         if name is None:
@@ -44,22 +44,22 @@ class Channel:
 
     def __str__(self):
         return self.name
-    
+
     def __repr__(self):
         return self.name
-    
+
     @property
     def ul(self):
         return self.tx
-    
+
     @ul.setter
     def ul(self, tx):
         self.tx = tx
-    
+
     @property
     def dl(self):
         return self.rx
-    
+
     @dl.setter
     def dl(self, rx):
         self.rx = rx
@@ -67,10 +67,56 @@ class Channel:
     @property
     def noise_power_lin(self):
         return 10 ** (self.noise_power / 10)
-    
+
     @noise_power_lin.setter
     def noise_power_lin(self, noise_power_lin):
         self.noise_power = 10 * log10(noise_power_lin)
+
+    @property
+    def signal_power_lin(self):
+        """Signal power after beamforming in linear scale."""
+        f = self.tx.get_weights().reshape(-1, 1)
+        H = self.get_channel_matrix()
+        w = self.rx.get_weights().reshape(-1, 1)
+        P = self.tx.power
+        return P * np.abs(w.conj().T @ H @ f) ** 2
+
+    @property
+    def signal_power(self):
+        """Signal power after beamforming in dBm."""
+        return 10 * log10(self.signal_power_lin)
+    
+    @property
+    def bf_noise_power_lin(self):
+        """Noise power after beamforming in linear scale."""
+        w = self.rx.get_weights().reshape(1, -1)
+        return np.linalg.norm(w) ** 2 * self.noise_power_lin
+    
+    @property
+    def bf_noise_power(self):
+        """Noise power after beamforming in dBm."""
+        return 10 * log10(self.bf_noise_power_lin)
+    
+    @property
+    def snr_lin(self):
+        """Signal-to-noise ratio (SNR) in linear scale."""
+        return self.signal_power_lin / self.bf_noise_power_lin
+    
+    @property
+    def snr(self):
+        """Signal-to-noise ratio (SNR) in dB."""
+        return 10 * log10(self.snr_lin)
+
+    # def get_bf_gain(self, linear=False) -> float:
+    #     """Get the beamforming gain of the channel in dBm."""
+    #     f = self.tx.get_weights().reshape(-1, 1)
+    #     H = self.get_channel_matrix()
+    #     w = self.rx.get_weights().reshape(-1, 1)
+    #     P = self.tx.power
+    #     gain = P * np.abs(w.conj().T @ H @ f) ** 2
+    #     if linear:
+    #         return gain
+    #     return 10 * log10(gain)
 
     def set_arrays(self, tx, rx):
         """Set the transmit and receive arrays of the channel.
@@ -143,38 +189,30 @@ class Channel:
         else:
             self.channel_matrix = channel_matrix
 
-    def get_channel_matrix(self):
-        """Get the channel matrix of the channel.
+    # def get_channel_matrix(self):
+    #     """Get the channel matrix of the channel.
 
-        Returns
-        -------
-            np.ndarray: Channel matrix.
-        """
-        return self.channel_matrix
-    
-    def get_noise_power(self, dBm=True):
-        """Get the noise power of the channel.
+    #     Returns
+    #     -------
+    #         np.ndarray: Channel matrix.
+    #     """
+    #     return self.channel_matrix
 
-        Parameters
-        ----------
-            dBm (bool): If True, returns the noise power in dBm. Otherwise, returns the noise power in linear scale.
+    # def get_noise_power(self, dBm=True):
+    #     """Get the noise power of the channel.
 
-        Returns
-        -------
-            float: Noise power.
-        """
-        if dBm:
-            return self.noise_power
-        else:
-            return self.noise_power_lin
+    #     Parameters
+    #     ----------
+    #         dBm (bool): If True, returns the noise power in dBm. Otherwise, returns the noise power in linear scale.
 
-    def get_bf_gain(self) -> float:
-        """Get the beamforming gain of the channel  in dBm."""
-        f = self.tx.get_weights().reshape(-1, 1)
-        H = self.get_channel_matrix()
-        w = self.rx.get_weights().reshape(-1, 1)
-        P = self.tx.power
-        return 10 * log10(P * np.abs(w.conj().T @ H @ f) ** 2)
+    #     Returns
+    #     -------
+    #         float: Noise power.
+    #     """
+    #     if dBm:
+    #         return self.noise_power
+    #     else:
+    #         return self.noise_power_lin
 
     def realize(self):
         """Realize the channel."""
