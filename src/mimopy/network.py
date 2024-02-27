@@ -33,7 +33,7 @@ class Network:
     def __repr__(self):
         return self.name
     
-    def add_node(self, node: Array):
+    def add_nodes(self, node: Array):
         """Add a node to the network."""
         if node not in self.nodes:
             node.name += f"_{len(self.nodes)}"
@@ -43,12 +43,12 @@ class Network:
         """Add a link to the network."""
         link.name += f"_{len(self.links)}"
         self.links.append(link)
-        self.add_node(link.tx)
+        self.add_nodes(link.tx)
         self.nodes[link.tx]["dl"].append((link.rx, link))
-        self.add_node(link.rx)
+        self.add_nodes(link.rx)
         self.nodes[link.rx]["ul"].append((link.tx, link))
     
-    def add_link(self, links):
+    def add_links(self, links):
         """Add links to the network."""
         if isinstance(links, Iterable):
             for link in links:
@@ -68,7 +68,7 @@ class Network:
                 self.links.remove(link)
                 self.nodes[link.tx]["dl"].remove((node, link))
     
-    def remove_node(self, nodes):
+    def remove_nodes(self, nodes):
         """Remove nodes from the network."""
         if nodes.__iter__:
             for node in nodes:
@@ -82,7 +82,7 @@ class Network:
         self.nodes[link.tx]["dl"].remove((link.rx, link))
         self.nodes[link.rx]["ul"].remove((link.tx, link))
     
-    def remove_link(self, links):
+    def remove_links(self, links):
         """Remove links from the network."""
         if isinstance(links, Iterable):
             for link in links:
@@ -92,12 +92,12 @@ class Network:
 
     def get_bf_gain(self, link) -> float:
         """Get the beamforming gain of the link in dB."""
-        return link.get_bf_gain()
+        return float(link.get_bf_gain())
 
     
     def get_snr(self, link) -> float:
         """Get the signal-to-noise ratio (SNR) of the link in dB."""
-        return self.get_bf_gain(link) - link.get_bf_noise()
+        return float(self.get_bf_gain(link) - link.get_bf_noise())
 
     def get_interference(self, link) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
@@ -106,15 +106,15 @@ class Network:
         for _, ch in self.nodes[link.rx]["ul"]:
             if ch != link:
                 interference += ch.get_bf_gain()
-        return interference
+        return float(interference)
 
     def get_inr(self, link) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
-        return self.get_interference(link) - link.get_bf_noise()
+        return float(self.get_interference(link) - link.get_bf_noise())
 
     def get_sinr(self, link) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
-        return (
+        return float(
             self.get_bf_gain(link) 
             - self.get_interference(link)
             - link.get_bf_noise()
@@ -122,16 +122,16 @@ class Network:
     
     def get_spectral_efﬁciency(self, link) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
-        return log10(1 + 10 ** (self.get_sinr(link) / 10))
+        return float(log10(1 + 10 ** (self.get_sinr(link) / 10)))
 
 
-    def plot(self, plane="xy", show_label=False, ax=None):
+    def plot(self, plane="xy", show_label=False, ax=None, **kwargs):
         """Plot the network."""
 
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
 
         if ax is None:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(**kwargs)
         for node, value in self.nodes.items():
             # plot nodes
             node_loc = node.location[coord_idx]

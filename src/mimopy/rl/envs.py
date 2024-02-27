@@ -27,6 +27,7 @@ class Environment(gym.Env):
         self.max_phase_change = 36  # degrees
         self.tolerance = 1
         self.tolerance_decay = 0.1
+        self.tolerance_update_factor = 1.5  # factor by which trigger tolerance update
         self.metrics = "sinr"
         self.meas_buffer_size = 1  # number of measurements to keep
         self.target_meas = None
@@ -42,19 +43,20 @@ class Environment(gym.Env):
 
     # Network related methods
     @classmethod
-    def from_network(cls, network: Network, target_link, controlled_nodes):
+    def from_network(cls, network: Network, target_links, controlled_nodes):
         """Create an environment from a network."""
         env = cls()
         env.network = network
-        env.add_target_link(target_link)
-        env.add_controlled_node(controlled_nodes)
+        # Target link and controlled nodes are needed, otherwise reset() will break
+        env.add_target_links(target_links)
+        env.add_controlled_nodes(controlled_nodes)
         env.reset()
         obs = env._get_obs()
         env.best_meas = [obs[env.metrics]]
         env.best_weights = [env.controlled_weights]
         return env
 
-    def add_target_link(self, links):
+    def add_target_links(self, links):
         """Add a target link to the environment."""
         if isinstance(links, Iterable):
             for link in links:
@@ -64,7 +66,7 @@ class Environment(gym.Env):
             if links not in self.target_links:
                 self.target_links.append(links)
 
-    def remove_target_link(self, links):
+    def remove_target_links(self, links):
         """Remove a target link from the environment."""
         if isinstance(links, Iterable):
             for link in links:
@@ -72,7 +74,7 @@ class Environment(gym.Env):
         else:
             self.target_links.remove(links)
 
-    def add_controlled_node(self, nodes):
+    def add_controlled_nodes(self, nodes):
         """Add a controlled node to the environment."""
         if isinstance(nodes, Iterable):
             for node in nodes:
@@ -82,7 +84,7 @@ class Environment(gym.Env):
             if nodes not in self.controlled_nodes:
                 self.controlled_nodes.append(nodes)
 
-    def remove_controlled_node(self, nodes):
+    def remove_controlled_nodes(self, nodes):
         """Remove a controlled node from the environment."""
         if isinstance(nodes, Iterable):
             for node in nodes:
@@ -90,10 +92,10 @@ class Environment(gym.Env):
         else:
             self.controlled_nodes.remove(nodes)
 
-    def plot(self, plane="xy", **kwargs):
+    def plot(self, plane="xy", label=False, **kwargs):
         """Plot the environment and highlight the controlled nodes and target links."""
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
-        fig, ax = self.network.plot(plane=plane, **kwargs)
+        fig, ax = self.network.plot(plane=plane, label=label, **kwargs)
         for node in self.controlled_nodes:
             ax.scatter(
                 *node.location[coord_idx], s=75, facecolors="b", label="Controlled Node"
@@ -129,6 +131,21 @@ class Environment(gym.Env):
             # ax.legend()
         plt.show()
 
+    def plot_gain(self, best_gain=False, **kwargs):
+        """Plot the beam pattern of the controlled nodes."""
+        num_plots = len(self.controlled_nodes)
+        num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
+        num_rows = np.ceil(num_plots / num_cols).astype(int)
+        fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
+        for node, ax in zip(self.controlled_nodes, np.ravel(axes)):
+            if best_gain:
+                node.plot_gain(ax=ax, weights=self.best_weights[-1])
+            else:
+                node.plot_gain(ax=ax)
+            title = ax.get_title()
+            ax.set_title(f"{node.name}: {title}")
+        plt.show()
+
     # Gym related methods
     @property
     def action_space(self):
@@ -138,12 +155,13 @@ class Environment(gym.Env):
             [node.num_antennas for node in self.controlled_nodes], dtype=np.int8
         )
         amp_phase_change = np.array(
-            [self.max_amp_change, self.max_phase_change * np.pi / 180], dtype=np.float16
+            [self.max_amp_change, self.max_phase_change * np.pi / 180]
         )
         # create the action space via outer product (2x1) x (1xN) -> (2xN)
         # N is the total number of controlled antennas across all nodes
         space = np.outer(amp_phase_change, np.ones(total_num_antennas))
-        return gym.spaces.Box(low=-space, high=space, dtype=np.float16)
+        space = np.float16(space)
+        return gym.spaces.Box(low=-space, high=space)
 
     @action_space.setter
     # read only property
@@ -192,7 +210,11 @@ class Environment(gym.Env):
     def observation_space(self, value):
         raise AttributeError("observation_space is read-only")
 
-    def _update_weights(self, action):
+    # ========================================================================
+    # Update the following methods for the custom environment
+    # ========================================================================
+
+    def update_weights(self, action):
         """Update the weights of the controlled nodes."""
         # split the action into amplitude and phase changes
         nums_antennas = [node.num_antennas for node in self.controlled_nodes]
@@ -206,15 +228,24 @@ class Environment(gym.Env):
             new_phase -= new_phase[0]  # normalize the phase to the first antenna
             node.set_weights(new_amp * np.exp(1j * new_phase))
 
-    def _update_tolerance(self):
+    def update_tolerance(self):
         self.tolerance *= 1 - self.tolerance_decay
 
-    def _get_reward(self, meas):
+    def get_reward(self, meas):
+        return meas - np.mean(self.best_meas)
+
+    def process_meas(self, meas) -> float:
+        """Process the measurements. Called in step()."""
+        return np.mean(meas)
+
+    # ========================================================================
+
+    def _update_reward(self, meas):
         if len(self.best_meas) == 0:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
             return 0
-        reward = meas - np.mean(self.best_meas)
+        reward = self.get_reward(meas)
         if reward > 0:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
@@ -224,20 +255,12 @@ class Environment(gym.Env):
         return reward
 
     def _get_obs(self):
-        # TODO: sinr calculation is off. Channel matrix and weights seems to update fine
         return {
-            "sinr": np.mean(
-                [self.network.get_sinr(link) for link in self.target_links]
-            ),
-            "spectral_effeciency": np.mean(
-                [
-                    self.network.get_spectral_efﬁciency(link)
-                    for link in self.target_links
-                ]
-            ),
-            "gain": np.mean(
-                [self.network.get_bf_gain(link) for link in self.target_links]
-            ),
+            "sinr": [self.network.get_sinr(link) for link in self.target_links],
+            "spectral_effeciency": [
+                self.network.get_spectral_efﬁciency(link) for link in self.target_links
+            ],
+            "gain": [self.network.get_bf_gain(link) for link in self.target_links],
             "amp": np.concatenate(
                 [np.abs(node.weights) for node in self.controlled_nodes]
             ),
@@ -255,16 +278,17 @@ class Environment(gym.Env):
         }
 
     def _get_done(self):
-        return self.target_meas - np.mean(self.best_meas) < self.tolerance
+        dist = self.target_meas - np.mean(self.best_meas)
+        if dist < self.tolerance * self.tolerance_update_factor:
+            self.update_tolerance()
+        return dist < self.tolerance
 
     def step(self, action):
-        self._update_weights(action)
+        self.update_weights(action)
         obs = self._get_obs()
-        meas = np.sum(obs[self.metrics])
-        reward = self._get_reward(meas)
+        meas = self.process_meas(obs[self.metrics])
+        reward = self._update_reward(meas)
         done = self._get_done()
-        if done and self.tolerance_decay:
-            self._update_tolerance()
         return obs, reward, done, False, self._get_info()
 
     def reset(self, **kwargs):
@@ -274,3 +298,17 @@ class Environment(gym.Env):
         self.best_meas = [obs[self.metrics]]
         self.best_weights = [self.controlled_weights]
         return obs, self._get_info()
+
+    def render(self, mode="human"):
+        if mode == "human":
+            # print(self._get_info())
+            # clear previous plots
+            plt.close("all")
+            self.plot(dpi=150)
+            self.plot_gain(best_gain=True, dpi=300)
+            plt.show()
+        elif mode == "rgb_array":
+            raise NotImplementedError
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+        return None
