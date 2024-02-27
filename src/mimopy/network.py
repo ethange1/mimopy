@@ -33,7 +33,7 @@ class Network:
     def __repr__(self):
         return self.name
     
-    def add_node(self, node: Array):
+    def add_nodes(self, node: Array):
         """Add a node to the network."""
         if node not in self.nodes:
             node.name += f"_{len(self.nodes)}"
@@ -43,12 +43,12 @@ class Network:
         """Add a link to the network."""
         link.name += f"_{len(self.links)}"
         self.links.append(link)
-        self.add_node(link.tx)
+        self.add_nodes(link.tx)
         self.nodes[link.tx]["dl"].append((link.rx, link))
-        self.add_node(link.rx)
+        self.add_nodes(link.rx)
         self.nodes[link.rx]["ul"].append((link.tx, link))
     
-    def add_link(self, links):
+    def add_links(self, links):
         """Add links to the network."""
         if isinstance(links, Iterable):
             for link in links:
@@ -68,7 +68,7 @@ class Network:
                 self.links.remove(link)
                 self.nodes[link.tx]["dl"].remove((node, link))
     
-    def remove_node(self, nodes):
+    def remove_nodes(self, nodes):
         """Remove nodes from the network."""
         if nodes.__iter__:
             for node in nodes:
@@ -82,7 +82,7 @@ class Network:
         self.nodes[link.tx]["dl"].remove((link.rx, link))
         self.nodes[link.rx]["ul"].remove((link.tx, link))
     
-    def remove_link(self, links):
+    def remove_links(self, links):
         """Remove links from the network."""
         if isinstance(links, Iterable):
             for link in links:
