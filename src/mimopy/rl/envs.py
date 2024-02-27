@@ -43,11 +43,12 @@ class Environment(gym.Env):
 
     # Network related methods
     @classmethod
-    def from_network(cls, network: Network, target_link, controlled_nodes):
+    def from_network(cls, network: Network, target_links, controlled_nodes):
         """Create an environment from a network."""
         env = cls()
         env.network = network
-        env.add_target_link(target_link)
+        # Target link and controlled nodes are needed, otherwise reset() will break
+        env.add_target_link(target_links)
         env.add_controlled_node(controlled_nodes)
         env.reset()
         obs = env._get_obs()
@@ -55,7 +56,7 @@ class Environment(gym.Env):
         env.best_weights = [env.controlled_weights]
         return env
 
-    def add_target_link(self, links):
+    def add_target_links(self, links):
         """Add a target link to the environment."""
         if isinstance(links, Iterable):
             for link in links:
@@ -65,7 +66,7 @@ class Environment(gym.Env):
             if links not in self.target_links:
                 self.target_links.append(links)
 
-    def remove_target_link(self, links):
+    def remove_target_links(self, links):
         """Remove a target link from the environment."""
         if isinstance(links, Iterable):
             for link in links:
@@ -73,7 +74,7 @@ class Environment(gym.Env):
         else:
             self.target_links.remove(links)
 
-    def add_controlled_node(self, nodes):
+    def add_controlled_nodes(self, nodes):
         """Add a controlled node to the environment."""
         if isinstance(nodes, Iterable):
             for node in nodes:
@@ -83,7 +84,7 @@ class Environment(gym.Env):
             if nodes not in self.controlled_nodes:
                 self.controlled_nodes.append(nodes)
 
-    def remove_controlled_node(self, nodes):
+    def remove_controlled_nodes(self, nodes):
         """Remove a controlled node from the environment."""
         if isinstance(nodes, Iterable):
             for node in nodes:
@@ -129,7 +130,7 @@ class Environment(gym.Env):
             )
             # ax.legend()
         plt.show()
-    
+
     def plot_gain(self, best_gain=False, **kwargs):
         """Plot the beam pattern of the controlled nodes."""
         num_plots = len(self.controlled_nodes)
@@ -144,7 +145,6 @@ class Environment(gym.Env):
             title = ax.get_title()
             ax.set_title(f"{node.name}: {title}")
         plt.show()
-      
 
     # Gym related methods
     @property
@@ -272,7 +272,7 @@ class Environment(gym.Env):
             "best_meas": self.best_meas[-1],
             "best_weights": self.best_weights[-1],
         }
-    
+
     def _get_state(self):
         """return a copy of the environment state."""
         return
