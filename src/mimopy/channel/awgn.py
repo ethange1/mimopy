@@ -1,24 +1,21 @@
 from typing import Any
 import numpy as np
-from numpy import log10
+from numpy import log10, log2
+
 
 # from ..array import Array
-
-
 class Channel:
-    """Base class for channels.
+    """Base class for Channel.
 
     Attributes
     ----------
-        name (str): Channel name.
-        tx (Array): Transmit array.
-        rx (Array): Receive array.
-        noise_power (float): Noise power in dBm.
+        name (str): Channel name. tx (Array): Transmit array. rx (Array):
+        Receive array. noise_power (float): Noise power in dBm.
         propagation_velocity (float): Propagation velocity in meters per second.
         carrier_frequency (float): Carrier frequency in Hertz.
         carrier_wavelength (float): Carrier wavelength in meters.
-        normalized_channel_energy (float): Normalized channel energy.
-        channel_energy_is_normalized (bool): Indicates if the channel energy is normalized.
+        normalized_channel_energy (float): Normalized channel energy. If False
+        then the channel matrix is not normalized.
     """
 
     def __init__(self, tx=None, rx=None, name=None, *args, **kwargs):
@@ -28,14 +25,13 @@ class Channel:
             self.name = self.__class__.__name__
         self.tx = tx
         self.rx = rx
-        self.channel_matrix = None
+        self._channel_matrix = None
         self.noise_power = 0
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
 
-        self.normalized_channel_energy = 1
-        self.channel_energy_is_normalized = False
+        self.normalized_channel_energy = False
 
         # for key, value in kwargs.items():
         #     setattr(self, key, value)
@@ -64,6 +60,35 @@ class Channel:
     def dl(self, rx):
         self.rx = rx
 
+    # ========================================================
+    # Channel matrix
+    # ========================================================
+
+    def realize(self):
+        """Realize the channel."""
+        raise NotImplementedError
+
+    @property
+    def channel_matrix(self):
+        """Channel matrix, setting the channel matrix will normalize the channel
+        energy."""
+        return self._channel_matrix
+
+    @channel_matrix.setter
+    def channel_matrix(self, channel_matrix):
+        if self.normalized_channel_energy:
+            self._channel_matrix = (
+                channel_matrix
+                * np.sqrt(self.normalized_channel_energy)
+                / np.linalg.norm(channel_matrix, ord="fro")
+            )
+        else:
+            self._channel_matrix = channel_matrix
+
+    # ========================================================
+    # Measurements
+    # ========================================================
+
     @property
     def noise_power_lin(self):
         return 10 ** (self.noise_power / 10)
@@ -76,7 +101,7 @@ class Channel:
     def signal_power_lin(self) -> float:
         """Signal power after beamforming in linear scale."""
         f = self.tx.get_weights().reshape(-1, 1)
-        H = self.get_channel_matrix()
+        H = self.channel_matrix
         w = self.rx.get_weights().reshape(-1, 1)
         P = self.tx.power
         return float(P * np.abs(w.conj().T @ H @ f) ** 2)
@@ -107,6 +132,48 @@ class Channel:
         """Signal-to-noise ratio (SNR) in dB."""
         return 10 * log10(self.snr_lin)
 
+    @property
+    def capacity(self) -> float:
+        """Channel capacity in bps/Hz."""
+        return log2(1 + self.snr_lin)
+
+    # ========================================================
+    # Skip Setters
+    # ========================================================
+
+    @signal_power_lin.setter
+    def signal_power_lin(self, _):
+        self._cant_be_set()
+
+    @signal_power.setter
+    def signal_power(self, _):
+        self._cant_be_set()
+
+    @bf_noise_power_lin.setter
+    def bf_noise_power_lin(self, _):
+        self._cant_be_set()
+
+    @bf_noise_power.setter
+    def bf_noise_power(self, _):
+        self._cant_be_set()
+
+    @snr_lin.setter
+    def snr_lin(self, _):
+        self._cant_be_set()
+
+    @snr.setter
+    def snr(self, _):
+        self._cant_be_set()
+
+    @capacity.setter
+    def capacity(self, _):
+        self._cant_be_set()
+
+    @staticmethod
+    def _cant_be_set():
+        # raise warning
+        raise Warning("This property can't be set, skipping...")
+
     # def get_bf_gain(self, linear=False) -> float:
     #     """Get the beamforming gain of the channel in dBm."""
     #     f = self.tx.get_weights().reshape(-1, 1)
@@ -118,6 +185,9 @@ class Channel:
     #         return gain
     #     return 10 * log10(gain)
 
+    # ========================================================
+    # Physical properties
+    # ========================================================
     @property
     def carrier_frequency(self):
         """Carrier frequency in Hertz.
@@ -150,92 +220,3 @@ class Channel:
     def carrier_wavelength(self, carrier_wavelength):
         self._carrier_wavelength = carrier_wavelength
         self._carrier_frequency = self.propagation_velocity / carrier_wavelength
-
-    # def set_carrier_frequency(self, carrier_frequency):
-    #     """Set the carrier frequency of the channel.
-
-    #     Parameters
-    #     ----------
-    #         carrier_frequency (float): Carrier frequency in Hertz.
-    #     """
-    #     self.carrier_frequency = carrier_frequency
-    #     self.carrier_wavelength = self.propagation_velocity / carrier_frequency
-
-    # def set_carrier_wavelegnth(self, carrier_wavelength):
-    #     """Set the carrier wavelength of the channel.
-
-    #     Parameters
-    #     ----------
-    #         carrier_wavelength (float): Carrier wavelength in meters.
-
-    #     Note: This method also updates the carrier frequency but not the propagation velocity.
-    #     """
-    #     self.carrier_wavelength = carrier_wavelength
-    #     self.carrier_frequency = self.propagation_velocity / carrier_wavelength
-
-    # def set_propagation_velocity(self, propagation_velocity):
-    #     """Set the propagation velocity of the channel.
-
-    #     Parameters
-    #     ----------
-    #         propagation_velocity (float): Propagation velocity in meters per second.
-
-    #     Note: This method also updates the carrier wavelength but not the carrier frequency.
-    #     """
-    #     self.propagation_velocity = propagation_velocity
-    #     self.carrier_wavelength = propagation_velocity / self.carrier_frequency
-
-    def _normalize_channel_energy(self, channel_matrix):
-        """Normalize the power of the channel matrix to the normalized transmit power.
-
-        Parameters
-        ----------
-            channel_matrix (np.ndarray): Channel matrix.
-
-        Returns
-        -------
-            np.ndarray: Normalized channel matrix.
-        """
-        frobenius_norm = np.linalg.norm(channel_matrix, ord="fro")
-        return channel_matrix * np.sqrt(self.normalized_channel_energy) / frobenius_norm
-
-    def set_channel_matrix(self, channel_matrix):
-        """Set the channel matrix of the channel.
-
-        Parameters
-        ----------
-            channel_matrix (np.ndarray): Channel matrix.
-        """
-        if self.channel_energy_is_normalized:
-            self.channel_matrix = self._normalize_channel_energy(channel_matrix)
-        else:
-            self.channel_matrix = channel_matrix
-
-    # def get_channel_matrix(self):
-    #     """Get the channel matrix of the channel.
-
-    #     Returns
-    #     -------
-    #         np.ndarray: Channel matrix.
-    #     """
-    #     return self.channel_matrix
-
-    # def get_noise_power(self, dBm=True):
-    #     """Get the noise power of the channel.
-
-    #     Parameters
-    #     ----------
-    #         dBm (bool): If True, returns the noise power in dBm. Otherwise, returns the noise power in linear scale.
-
-    #     Returns
-    #     -------
-    #         float: Noise power.
-    #     """
-    #     if dBm:
-    #         return self.noise_power
-    #     else:
-    #         return self.noise_power_lin
-
-    def realize(self):
-        """Realize the channel."""
-        raise NotImplementedError

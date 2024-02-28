@@ -1,4 +1,4 @@
-from .base import Channel
+from .awgn import Channel
 import numpy as np
 from numpy import log10
 
@@ -66,7 +66,7 @@ class LosChannel(Channel):
         rx_response = self.rx.get_array_response(self.az + np.pi, self.el + np.pi)
         # H = np.outer(tx_response, rx_response).T
         H = np.outer(rx_response, tx_response.conj())
-        self.set_channel_matrix(H)
+        self.channel_matrix = H
 
     @staticmethod
     def _get_relative_position(loc1, loc2):

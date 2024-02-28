@@ -3,7 +3,7 @@ from collections import abc
 from collections.abc import Iterable
 
 import numpy as np
-from numpy import log10
+from numpy import log10, log2
 
 from .array import Array
 from .channel import *
@@ -18,8 +18,6 @@ class Network:
         name (str): Network name.
         nodes (List): List of nodes in the network.
         links (List): List of links in the network.
-        adj_matrix (Array): edge-node adjacency matrix of the network.
-            The rows are edges (link) and the cols are nodes.
     """
 
     def __init__(self, name="Network", *args, **kwargs):
@@ -32,14 +30,14 @@ class Network:
 
     def __repr__(self):
         return self.name
-    
+
     def add_nodes(self, node: Array):
         """Add a node to the network."""
         if node not in self.nodes:
             node.name += f"_{len(self.nodes)}"
             self.nodes[node] = {"dl": [], "ul": []}
 
-    def _add_link(self, link):
+    def _add_link(self, link: Channel):
         """Add a link to the network."""
         link.name += f"_{len(self.links)}"
         self.links.append(link)
@@ -47,7 +45,7 @@ class Network:
         self.nodes[link.tx]["dl"].append((link.rx, link))
         self.add_nodes(link.rx)
         self.nodes[link.rx]["ul"].append((link.tx, link))
-    
+
     def add_links(self, links):
         """Add links to the network."""
         if isinstance(links, Iterable):
@@ -67,7 +65,7 @@ class Network:
                 # the node is the rx; remove dl from link.tx
                 self.links.remove(link)
                 self.nodes[link.tx]["dl"].remove((node, link))
-    
+
     def remove_nodes(self, nodes):
         """Remove nodes from the network."""
         if nodes.__iter__:
@@ -76,12 +74,12 @@ class Network:
         else:
             self._remove_node(nodes)
 
-    def _remove_link(self, link):
+    def _remove_link(self, link: Channel):
         """Remove a link from the network."""
         self.links.remove(link)
         self.nodes[link.tx]["dl"].remove((link.rx, link))
         self.nodes[link.rx]["ul"].remove((link.tx, link))
-    
+
     def remove_links(self, links):
         """Remove links from the network."""
         if isinstance(links, Iterable):
@@ -90,55 +88,65 @@ class Network:
         else:
             self._remove_link(links)
 
-    def get_bf_gain(self, link) -> float:
+    # ===================================================================
+    # Link measurement methods wrapper
+    # ===================================================================
+    def signal_power(self, link, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
-        return float(link.get_bf_gain())
+        return link.signal_power_lin if linear else link.signal_power
 
-    
-    def get_snr(self, link) -> float:
-        """Get the signal-to-noise ratio (SNR) of the link in dB."""
-        return float(self.get_bf_gain(link) - link.get_bf_noise())
+    def bf_noise_power(self, link, linear=False) -> float:
+        """Get the noise power after beamforming in dBm."""
+        return link.bf_noise_power_lin if linear else link.bf_noise_power
 
-    def get_interference(self, link) -> float:
-        """Get the interference-to-noise ratio (INR) of the link in dB."""
+    def snr(self, link, linear=False) -> float:
+        """Get the signal-to-noise ratio (SNR) of the link."""
+        return link.snr_lin if linear else link.snr
+
+    # ===================================================================
+    # Network measurement methods
+    # ===================================================================
+    def interference(self, link, linear=False) -> float:
+        """Get the interference of the link."""
         # interference is the sum of bf gains of all other ul links of the rx
-        interference = 0
-        for _, ch in self.nodes[link.rx]["ul"]:
-            if ch != link:
-                interference += ch.get_bf_gain()
-        return float(interference)
+        interference_lin = 0
+        for _, l in self.nodes[link.rx]["ul"]:
+            if l != link:
+                interference_lin += self.signal_power(l, linear=True)
+        return interference_lin if linear else 10 * log10(interference_lin)
 
-    def get_inr(self, link) -> float:
+    def inr(self, link, linear=False) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
-        return float(self.get_interference(link) - link.get_bf_noise())
-
-    def get_sinr(self, link) -> float:
-        """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
-        return float(
-            self.get_bf_gain(link) 
-            - self.get_interference(link)
-            - link.get_bf_noise()
+        inr_lin = self.interference(link, linear=True) / self.bf_noise_power(
+            link, linear=True
         )
-    
-    def get_spectral_efﬁciency(self, link) -> float:
+        return inr_lin if linear else 10 * log10(inr_lin)
+
+    def sinr(self, link, linear=False) -> float:
+        """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
+        sinr_lin = self.signal_power(link, linear=True) / (
+            self.interference(link, linear=True)
+            + self.bf_noise_power(link, linear=True)
+        )
+        return sinr_lin if linear else 10 * log10(sinr_lin)
+
+    def spectral_efﬁciency(self, link) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
         return float(log10(1 + 10 ** (self.get_sinr(link) / 10)))
 
-
+    # ===================================================================
+    # Plotting methods
+    # ===================================================================
     def plot(self, plane="xy", show_label=False, ax=None, **kwargs):
         """Plot the network."""
-
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
-
         if ax is None:
             fig, ax = plt.subplots(**kwargs)
         for node, value in self.nodes.items():
             # plot nodes
             node_loc = node.location[coord_idx]
             # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
-            ax.scatter(
-                *node_loc, s=70, facecolors="k", label=node.name
-            )
+            ax.scatter(*node_loc, s=70, facecolors="k", label=node.name)
             if show_label:
                 ax.annotate(
                     node.name,
@@ -177,9 +185,7 @@ class Network:
         for node, value in self.nodes.items():
             # plot nodes
             node_loc = node.location
-            ax.scatter(
-                *node_loc, s=70, facecolors="k", label=node.name
-            )
+            ax.scatter(*node_loc, s=70, facecolors="k", label=node.name)
             if show_label:
                 ax.text(*node_loc, node.name)
             # plot downlink

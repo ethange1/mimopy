@@ -1,2 +1,2 @@
-from .base import *
+from .awgn import *
 from .los import *
