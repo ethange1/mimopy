@@ -11,7 +11,7 @@ from ..channel import *
 from ..network import Network
 
 
-class Environment(gym.Env):
+class MIMOEnv(gym.Env):
     """RL environment class."""
 
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -20,7 +20,7 @@ class Environment(gym.Env):
         self.name = name
         if name is None:
             self.name = self.__class__.__name__
-        self.network = None
+        self.network = Network()
         self.target_links = []
         self.controlled_nodes = []
         self.max_amp_change = 0.1  # percentage change in amplitude
@@ -239,6 +239,8 @@ class Environment(gym.Env):
         return np.mean(meas)
 
     # ========================================================================
+    # Environment related methods
+    # ========================================================================
 
     def _update_reward(self, meas):
         if len(self.best_meas) == 0:
@@ -256,11 +258,11 @@ class Environment(gym.Env):
 
     def _get_obs(self):
         return {
-            "sinr": [self.network.get_sinr(link) for link in self.target_links],
+            "sinr": [self.network.sinr(link) for link in self.target_links],
             "spectral_effeciency": [
-                self.network.get_spectral_efﬁciency(link) for link in self.target_links
+                self.network.spectral_efficiency(link) for link in self.target_links
             ],
-            "gain": [self.network.get_bf_gain(link) for link in self.target_links],
+            "gain": [self.network.bf_gain(link) for link in self.target_links],
             "amp": np.concatenate(
                 [np.abs(node.weights) for node in self.controlled_nodes]
             ),

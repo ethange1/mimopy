@@ -98,13 +98,22 @@ class Channel:
         self.noise_power = 10 * log10(noise_power_lin)
 
     @property
-    def signal_power_lin(self) -> float:
-        """Signal power after beamforming in linear scale."""
+    def bf_gain_lin(self) -> float:
+        """Beamforming gain in linear scale."""
         f = self.tx.get_weights().reshape(-1, 1)
         H = self.channel_matrix
         w = self.rx.get_weights().reshape(-1, 1)
-        P = self.tx.power
-        return float(P * np.abs(w.conj().T @ H @ f) ** 2)
+        return float(np.abs(w.conj().T @ H @ f) ** 2)
+    
+    @property
+    def bf_gain(self) -> float:
+        """Beamforming gain in dB."""
+        return 10 * log10(self.bf_gain_lin)
+
+    @property
+    def signal_power_lin(self) -> float:
+        """Signal power after beamforming in linear scale."""
+        return self.tx.power * self.bf_gain_lin
 
     @property
     def signal_power(self) -> float:

@@ -7,8 +7,7 @@ from numpy import log10, log2
 
 from .array import Array
 from .channel import *
-from matplotlib import pyplot as plt
-
+import matplotlib.pyplot as plt
 
 class Network:
     """Network class.
@@ -91,11 +90,16 @@ class Network:
     # ===================================================================
     # Link measurement methods wrapper
     # ===================================================================
-    def signal_power(self, link, linear=False) -> float:
+    
+    def bf_gain(self, link: Channel, linear=False) -> float:
+        """Get the beamforming gain of the link in dB."""
+        return link.bf_gain_lin if linear else link.bf_gain
+
+    def signal_power(self, link: Channel, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         return link.signal_power_lin if linear else link.signal_power
 
-    def bf_noise_power(self, link, linear=False) -> float:
+    def bf_noise_power(self, link: Channel, linear=False) -> float:
         """Get the noise power after beamforming in dBm."""
         return link.bf_noise_power_lin if linear else link.bf_noise_power
 
@@ -132,7 +136,7 @@ class Network:
 
     def spectral_efﬁciency(self, link) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
-        return float(log10(1 + 10 ** (self.get_sinr(link) / 10)))
+        return float(log10(1 + 10 ** (self.sinr(link) / 10)))
 
     # ===================================================================
     # Plotting methods
