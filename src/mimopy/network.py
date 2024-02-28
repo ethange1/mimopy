@@ -9,6 +9,7 @@ from .antenna_array import AntennaArray
 from .channel import *
 import matplotlib.pyplot as plt
 
+
 class Network:
     """Network class.
 
@@ -90,7 +91,7 @@ class Network:
     # ===================================================================
     # Link measurement methods wrapper
     # ===================================================================
-    
+
     def bf_gain(self, link: Channel, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         return link.bf_gain_lin if linear else link.bf_gain
@@ -117,14 +118,18 @@ class Network:
         for _, l in self.nodes[link.rx]["ul"]:
             if l != link:
                 interference_lin += self.signal_power(l, linear=True)
-        return interference_lin if linear else 10 * log10(interference_lin)
+        return (
+            interference_lin
+            if linear
+            else 10 * log10(interference_lin + np.finfo(float).tiny)
+        )
 
     def inr(self, link, linear=False) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
         inr_lin = self.interference(link, linear=True) / self.bf_noise_power(
             link, linear=True
         )
-        return inr_lin if linear else 10 * log10(inr_lin)
+        return inr_lin if linear else 10 * log10(inr_lin + np.finfo(float).tiny)
 
     def sinr(self, link, linear=False) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""

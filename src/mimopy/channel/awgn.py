@@ -99,12 +99,14 @@ class Channel:
 
     @property
     def bf_gain_lin(self) -> float:
-        """Beamforming gain in linear scale."""
+        """Beamforming gain in linear scale. Note that the transmit weights are
+        normalized to have unit norm."""
         f = self.tx.weights.reshape(-1, 1)
+        f /= np.linalg.norm(f)
         H = self.channel_matrix
         w = self.rx.weights.reshape(-1, 1)
         return float(np.abs(w.conj().T @ H @ f) ** 2)
-    
+
     @property
     def bf_gain(self) -> float:
         """Beamforming gain in dB."""

@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import log10, log2
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -183,7 +184,6 @@ class AntennaArray:
     def reset(self):
         """reset weights to 1"""
         self.weights = np.ones(self.num_antennas)
-    
 
     def set_weights(self, weights, index=None):
         """Set the weights of the antennas.
@@ -440,7 +440,7 @@ class AntennaArray:
         array_response_vector = self.get_array_response(az, el)
         gain = (self.weights.conj().T @ array_response_vector) ** 2
         if db:
-            return 10 * np.log10(np.abs(gain + 1e-9))
+            return 10 * log10(np.abs(gain + np.finfo(float).tiny))
         return gain
 
     def get_conjugate_beamformer(self, az, el):
@@ -534,7 +534,9 @@ class AntennaArray:
             # ax.set_ylim(-(max(array_response)), max(array_response) + 10)
         ax.set_xlabel("Azimuth (deg)")
         ax.set_ylabel("Gain (dB)")
-        title = f"Elevation = {el} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
+        title = (
+            f"Elevation = {el} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
+        )
         ax.set_title(title)
         ax.grid(True)
         if weights is not None:
@@ -588,7 +590,9 @@ class AntennaArray:
             for j in range(num_points):
                 array_response[i, j] = self.get_array_gain(az_grid[i, j], el_grid[i, j])
         array_response = np.abs(array_response)
-        array_response = 20 * np.log10(array_response / np.max(array_response))
+        array_response = 20 * log10(
+            array_response / np.max(array_response) + np.finfo(float).tiny
+        )
         fig = plt.figure(**kwargs)
 
         if polar:

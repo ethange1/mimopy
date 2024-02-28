@@ -51,7 +51,7 @@ class MIMOEnv(gym.Env):
         env.add_target_links(target_links)
         env.add_controlled_nodes(controlled_nodes)
         env.reset()
-        obs = env._get_obs()
+        obs = env.get_obs()
         env.best_meas = [obs[env.metrics]]
         env.best_weights = [env.controlled_weights]
         return env
@@ -242,7 +242,7 @@ class MIMOEnv(gym.Env):
     # Environment related methods
     # ========================================================================
 
-    def _update_reward(self, meas):
+    def update_reward(self, meas):
         if len(self.best_meas) == 0:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
@@ -256,7 +256,7 @@ class MIMOEnv(gym.Env):
                 self.best_weights.pop(0)
         return reward
 
-    def _get_obs(self):
+    def get_obs(self):
         return {
             "sinr": [self.network.sinr(link) for link in self.target_links],
             "spectral_effeciency": [
@@ -271,7 +271,7 @@ class MIMOEnv(gym.Env):
             ),
         }
 
-    def _get_info(self):
+    def get_info(self):
         return {
             "target_meas": self.target_meas,
             "tolerance": self.tolerance,
@@ -279,7 +279,7 @@ class MIMOEnv(gym.Env):
             "best_weights": self.best_weights[-1],
         }
 
-    def _get_done(self):
+    def get_done(self):
         dist = self.target_meas - np.mean(self.best_meas)
         if dist < self.tolerance * self.tolerance_update_factor:
             self.update_tolerance()
@@ -287,23 +287,23 @@ class MIMOEnv(gym.Env):
 
     def step(self, action):
         self.update_weights(action)
-        obs = self._get_obs()
+        obs = self.get_obs()
         meas = self.process_meas(obs[self.metrics])
-        reward = self._update_reward(meas)
-        done = self._get_done()
-        return obs, reward, done, False, self._get_info()
+        reward = self.update_reward(meas)
+        done = self.get_done()
+        return obs, reward, done, False, self.get_info()
 
     def reset(self, **kwargs):
         for node in self.controlled_nodes:
             node.set_weights(np.ones(node.num_antennas))
-        obs = self._get_obs()
+        obs = self.get_obs()
         self.best_meas = [obs[self.metrics]]
         self.best_weights = [self.controlled_weights]
-        return obs, self._get_info()
+        return obs, self.get_info()
 
     def render(self, mode="human"):
         if mode == "human":
-            # print(self._get_info())
+            # print(self.get_info())
             # clear previous plots
             plt.close("all")
             self.plot(dpi=150)
