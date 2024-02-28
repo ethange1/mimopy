@@ -100,9 +100,9 @@ class Channel:
     @property
     def bf_gain_lin(self) -> float:
         """Beamforming gain in linear scale."""
-        f = self.tx.get_weights().reshape(-1, 1)
+        f = self.tx.weights.reshape(-1, 1)
         H = self.channel_matrix
-        w = self.rx.get_weights().reshape(-1, 1)
+        w = self.rx.weights.reshape(-1, 1)
         return float(np.abs(w.conj().T @ H @ f) ** 2)
     
     @property
@@ -123,7 +123,7 @@ class Channel:
     @property
     def bf_noise_power_lin(self):
         """Noise power after beamforming in linear scale."""
-        w = self.rx.get_weights().reshape(1, -1)
+        w = self.rx.weights.reshape(1, -1)
         return float(np.linalg.norm(w) ** 2 * self.noise_power_lin)
 
     @property

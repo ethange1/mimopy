@@ -183,17 +183,7 @@ class AntennaArray:
     def reset(self):
         """reset weights to 1"""
         self.weights = np.ones(self.num_antennas)
-
-    def set_marker(self, marker):
-        """Set the marker of the antennas.
-
-        Parameters
-        ----------
-        marker : str
-            Marker of the antennas.
-        """
-        # TODO: transmitter and receiver should be different markers
-        self.marker = marker
+    
 
     def set_weights(self, weights, index=None):
         """Set the weights of the antennas.
