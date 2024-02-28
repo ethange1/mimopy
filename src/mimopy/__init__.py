@@ -1,2 +1,2 @@
-from .array import *
+from .antenna_array import *
 from .network import *

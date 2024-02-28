@@ -23,7 +23,7 @@ class AntennaArray:
         self.weights = np.ones(num_antennas)
         self.marker = "o"
         self.power = 1
-        self.name = "Array"
+        self.name = "AntennaArray"
         self.spacing = 0.5
         self.frequency = 1e9
 
@@ -395,7 +395,7 @@ class AntennaArray:
             return new_array
 
     ############################
-    # Get Array Properties
+    # Get AntennaArray Properties
     ############################
 
     def get_array_response(self, az=0, el=0):
@@ -689,7 +689,7 @@ class AntennaArray:
         else:
             raise ValueError("plane must be 'xy', 'yz' or 'xz'")
         ax.grid(True)
-        ax.set_title(r"Array Projection in {}-plane".format(plane))
+        ax.set_title(r"AntennaArray Projection in {}-plane".format(plane))
 
         if ax is None:
             plt.show()

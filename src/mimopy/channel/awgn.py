@@ -3,13 +3,13 @@ import numpy as np
 from numpy import log10, log2
 
 
-# from ..array import Array
+# from ..array import AntennaArray
 class Channel:
     """Base class for Channel.
 
     Attributes
     ----------
-        name (str): Channel name. tx (Array): Transmit array. rx (Array):
+        name (str): Channel name. tx (AntennaArray): Transmit array. rx (AntennaArray):
         Receive array. noise_power (float): Noise power in dBm.
         propagation_velocity (float): Propagation velocity in meters per second.
         carrier_frequency (float): Carrier frequency in Hertz.

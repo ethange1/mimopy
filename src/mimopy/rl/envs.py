@@ -6,7 +6,7 @@ from numpy import log10
 from matplotlib import pyplot as plt
 import gymnasium as gym
 
-from ..array import Array
+from ..antenna_array import AntennaArray
 from ..channel import *
 from ..network import Network
 

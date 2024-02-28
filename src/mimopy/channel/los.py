@@ -9,8 +9,8 @@ class LosChannel(Channel):
     Attributes
     ----------
         name (str): Channel name.
-        tx (Array): Transmit array.
-        rx (Array): Receive array.
+        tx (AntennaArray): Transmit array.
+        rx (AntennaArray): Receive array.
         num_antennas_tx (int): Number of transmit antennas.
         num_antennas_rx (int): Number of receive antennas.
         propagation_velocity (float): Propagation velocity in meters per second.

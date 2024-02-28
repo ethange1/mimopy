@@ -5,7 +5,7 @@ from collections.abc import Iterable
 import numpy as np
 from numpy import log10, log2
 
-from .array import Array
+from .antenna_array import AntennaArray
 from .channel import *
 import matplotlib.pyplot as plt
 
@@ -30,7 +30,7 @@ class Network:
     def __repr__(self):
         return self.name
 
-    def add_nodes(self, node: Array):
+    def add_nodes(self, node: AntennaArray):
         """Add a node to the network."""
         if node not in self.nodes:
             node.name += f"_{len(self.nodes)}"
@@ -53,7 +53,7 @@ class Network:
         else:
             self._add_link(links)
 
-    def _remove_node(self, node: Array):
+    def _remove_node(self, node: AntennaArray):
         """Remove a node and all links associated with it from the network."""
         if node in self.nodes:
             for _, link in self.nodes[node]["dl"]:
