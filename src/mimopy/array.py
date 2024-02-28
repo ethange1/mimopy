@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
-class Array:
+class AntennaArray:
     """Base class for array objects.
 
     Parameters
