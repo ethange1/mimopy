@@ -30,9 +30,9 @@ class Channel:
         self.rx = rx
         self.channel_matrix = None
         self.noise_power = 0
-        self.propagation_velocity = 299792458
-        self.carrier_frequency = 1e9
-        self.carrier_wavelength = self.propagation_velocity / self.carrier_frequency
+        self._carrier_frequency = 1e9
+        self._propagation_velocity = 299792458
+        self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
 
         self.normalized_channel_energy = 1
         self.channel_energy_is_normalized = False
@@ -73,37 +73,37 @@ class Channel:
         self.noise_power = 10 * log10(noise_power_lin)
 
     @property
-    def signal_power_lin(self):
+    def signal_power_lin(self) -> float:
         """Signal power after beamforming in linear scale."""
         f = self.tx.get_weights().reshape(-1, 1)
         H = self.get_channel_matrix()
         w = self.rx.get_weights().reshape(-1, 1)
         P = self.tx.power
-        return P * np.abs(w.conj().T @ H @ f) ** 2
+        return float(P * np.abs(w.conj().T @ H @ f) ** 2)
 
     @property
-    def signal_power(self):
+    def signal_power(self) -> float:
         """Signal power after beamforming in dBm."""
         return 10 * log10(self.signal_power_lin)
-    
+
     @property
     def bf_noise_power_lin(self):
         """Noise power after beamforming in linear scale."""
         w = self.rx.get_weights().reshape(1, -1)
-        return np.linalg.norm(w) ** 2 * self.noise_power_lin
-    
+        return float(np.linalg.norm(w) ** 2 * self.noise_power_lin)
+
     @property
-    def bf_noise_power(self):
+    def bf_noise_power(self) -> float:
         """Noise power after beamforming in dBm."""
         return 10 * log10(self.bf_noise_power_lin)
-    
+
     @property
-    def snr_lin(self):
+    def snr_lin(self) -> float:
         """Signal-to-noise ratio (SNR) in linear scale."""
-        return self.signal_power_lin / self.bf_noise_power_lin
-    
+        return float(self.signal_power_lin / self.bf_noise_power_lin)
+
     @property
-    def snr(self):
+    def snr(self) -> float:
         """Signal-to-noise ratio (SNR) in dB."""
         return 10 * log10(self.snr_lin)
 
@@ -118,50 +118,72 @@ class Channel:
     #         return gain
     #     return 10 * log10(gain)
 
-    def set_arrays(self, tx, rx):
-        """Set the transmit and receive arrays of the channel.
+    @property
+    def carrier_frequency(self):
+        """Carrier frequency in Hertz.
+        Also update carrier wavelength when set."""
+        return self._carrier_frequency
 
-        Parameters
-        ----------
-            tx (Array): Transmit array.
-            rx (Array): Receive array.
-        """
-        self.set_tx(tx)
-        self.set_rx(rx)
+    @carrier_frequency.setter
+    def carrier_frequency(self, carrier_frequency):
+        self._carrier_frequency = carrier_frequency
+        self._carrier_wavelength = self.propagation_velocity / carrier_frequency
 
-    def set_carrier_frequency(self, carrier_frequency):
-        """Set the carrier frequency of the channel.
+    @property
+    def propagation_velocity(self):
+        """Propagation velocity in meters per second.
+        Also update carrier wavelength when set."""
+        return self._propagation_velocity
 
-        Parameters
-        ----------
-            carrier_frequency (float): Carrier frequency in Hertz.
-        """
-        self.carrier_frequency = carrier_frequency
-        self.carrier_wavelength = self.propagation_velocity / carrier_frequency
+    @propagation_velocity.setter
+    def propagation_velocity(self, propagation_velocity):
+        self._propagation_velocity = propagation_velocity
+        self._carrier_wavelength = propagation_velocity / self.carrier_frequency
 
-    def set_carrier_wavelegnth(self, carrier_wavelength):
-        """Set the carrier wavelength of the channel.
+    @property
+    def carrier_wavelength(self):
+        """Carrier wavelength in meters.
+        Also update carrier frequency when set."""
+        return self._carrier_wavelength
 
-        Parameters
-        ----------
-            carrier_wavelength (float): Carrier wavelength in meters.
+    @carrier_wavelength.setter
+    def carrier_wavelength(self, carrier_wavelength):
+        self._carrier_wavelength = carrier_wavelength
+        self._carrier_frequency = self.propagation_velocity / carrier_wavelength
 
-        Note: This method also updates the carrier frequency but not the propagation velocity.
-        """
-        self.carrier_wavelength = carrier_wavelength
-        self.carrier_frequency = self.propagation_velocity / carrier_wavelength
+    # def set_carrier_frequency(self, carrier_frequency):
+    #     """Set the carrier frequency of the channel.
 
-    def set_propagation_velocity(self, propagation_velocity):
-        """Set the propagation velocity of the channel.
+    #     Parameters
+    #     ----------
+    #         carrier_frequency (float): Carrier frequency in Hertz.
+    #     """
+    #     self.carrier_frequency = carrier_frequency
+    #     self.carrier_wavelength = self.propagation_velocity / carrier_frequency
 
-        Parameters
-        ----------
-            propagation_velocity (float): Propagation velocity in meters per second.
+    # def set_carrier_wavelegnth(self, carrier_wavelength):
+    #     """Set the carrier wavelength of the channel.
 
-        Note: This method also updates the carrier wavelength but not the carrier frequency.
-        """
-        self.propagation_velocity = propagation_velocity
-        self.carrier_wavelength = propagation_velocity / self.carrier_frequency
+    #     Parameters
+    #     ----------
+    #         carrier_wavelength (float): Carrier wavelength in meters.
+
+    #     Note: This method also updates the carrier frequency but not the propagation velocity.
+    #     """
+    #     self.carrier_wavelength = carrier_wavelength
+    #     self.carrier_frequency = self.propagation_velocity / carrier_wavelength
+
+    # def set_propagation_velocity(self, propagation_velocity):
+    #     """Set the propagation velocity of the channel.
+
+    #     Parameters
+    #     ----------
+    #         propagation_velocity (float): Propagation velocity in meters per second.
+
+    #     Note: This method also updates the carrier wavelength but not the carrier frequency.
+    #     """
+    #     self.propagation_velocity = propagation_velocity
+    #     self.carrier_wavelength = propagation_velocity / self.carrier_frequency
 
     def _normalize_channel_energy(self, channel_matrix):
         """Normalize the power of the channel matrix to the normalized transmit power.
