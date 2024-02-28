@@ -95,7 +95,7 @@ class Channel:
 
     @noise_power_lin.setter
     def noise_power_lin(self, noise_power_lin):
-        self.noise_power = 10 * log10(noise_power_lin)
+        self.noise_power = 10 * log10(noise_power_lin + np.finfo(float).tiny)
 
     @property
     def bf_gain_lin(self) -> float:
@@ -110,7 +110,7 @@ class Channel:
     @property
     def bf_gain(self) -> float:
         """Beamforming gain in dB."""
-        return 10 * log10(self.bf_gain_lin)
+        return 10 * log10(self.bf_gain_lin + np.finfo(float).tiny)
 
     @property
     def signal_power_lin(self) -> float:
@@ -120,7 +120,7 @@ class Channel:
     @property
     def signal_power(self) -> float:
         """Signal power after beamforming in dBm."""
-        return 10 * log10(self.signal_power_lin)
+        return 10 * log10(self.signal_power_lin + np.finfo(float).tiny)
 
     @property
     def bf_noise_power_lin(self):
@@ -131,7 +131,7 @@ class Channel:
     @property
     def bf_noise_power(self) -> float:
         """Noise power after beamforming in dBm."""
-        return 10 * log10(self.bf_noise_power_lin)
+        return 10 * log10(self.bf_noise_power_lin + np.finfo(float).tiny)
 
     @property
     def snr_lin(self) -> float:
@@ -141,7 +141,7 @@ class Channel:
     @property
     def snr(self) -> float:
         """Signal-to-noise ratio (SNR) in dB."""
-        return 10 * log10(self.snr_lin)
+        return 10 * log10(self.snr_lin + np.finfo(float).tiny)
 
     @property
     def capacity(self) -> float:
