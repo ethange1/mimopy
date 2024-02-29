@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg as LA
 from numpy import log10, log2
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -185,7 +186,7 @@ class AntennaArray:
         """reset weights to 1"""
         self.weights = np.ones(self.num_antennas)
 
-    def set_weights(self, weights, index=None):
+    def set_weights(self, weights, index=None, normalize=True):
         """Set the weights of the antennas.
 
         Parameters
@@ -197,8 +198,12 @@ class AntennaArray:
         index : array_like, optional
             Indices of the antennas whose weight is to be changed. If not given, the
             weights of all antennas are passed.
+        normalize : bool, optional
+            If True, the weights are normalized to have unit norm. Default is True.
         """
         weights = np.asarray(weights).reshape(-1)
+        if normalize:
+            weights = weights / LA.norm(weights)
         if index is None:
             if isinstance(weights, float):
                 self.weights = weights * np.ones(self.num_antennas)

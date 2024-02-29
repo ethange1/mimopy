@@ -136,7 +136,7 @@ class MIMOEnv(gym.Env):
             # ax.legend()
         plt.show()
 
-    def plot_gain(self, best_gain=False, **kwargs):
+    def plot_gain(self, best_weights=False, **kwargs):
         """Plot the beam pattern of the controlled nodes."""
         num_plots = len(self.controlled_nodes)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
@@ -144,8 +144,10 @@ class MIMOEnv(gym.Env):
         fig, axes = plt.subplots(
             num_rows, num_cols, figsize=(5 * num_cols, 5 * num_rows), **kwargs
         )
-        for node, ax, weights in zip(self.controlled_nodes, np.ravel(axes), self.best_weights[-1]):
-            if best_gain:
+        for node, ax, weights in zip(
+            self.controlled_nodes, np.ravel(axes), self.best_weights[-1]
+        ):
+            if best_weights:
                 node.plot_gain(ax=ax, weights=weights)
             else:
                 node.plot_gain(ax=ax)
@@ -313,6 +315,6 @@ class MIMOEnv(gym.Env):
         # if mode == "human":
         plt.close("all")
         self.plot(dpi=150)
-        self.plot_gain(best_gain=True, dpi=300)
+        self.plot_gain(True, dpi=300)
         plt.show()
         return None

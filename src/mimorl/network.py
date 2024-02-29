@@ -17,7 +17,7 @@ class Network:
     ----------
         name (str): Network name.
         links (list): List of links in the network.
-        nodes (tuple): tuple of nodes in the network.
+        nodes (tuple): Tuple of nodes in the network.
         nodes_dict (dict): Dictionary of nodes in the network.
     """
 
