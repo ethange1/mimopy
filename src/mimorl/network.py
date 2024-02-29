@@ -16,35 +16,44 @@ class Network:
     Attributes
     ----------
         name (str): Network name.
-        nodes (List): List of nodes in the network.
-        links (List): List of links in the network.
+        links (list): List of links in the network.
+        nodes (tuple): tuple of nodes in the network.
+        nodes_dict (dict): Dictionary of nodes in the network.
     """
 
     def __init__(self, name="Network", *args, **kwargs):
         self.name = name
         self.links = []
-        self.nodes = dict()
+        self.nodes_dict = dict()
 
     def __str__(self):
         return self.name
 
     def __repr__(self):
         return self.name
+    
+    @property
+    def nodes(self):
+        return tuple(self.nodes_dict.keys())
+    
+    @nodes.setter
+    def nodes(self, _):
+        raise AttributeError("Cannot set nodes directly. Use add_nodes() instead.")
 
     def add_nodes(self, node: AntennaArray):
         """Add a node to the network."""
-        if node not in self.nodes:
-            node.name += f"_{len(self.nodes)}"
-            self.nodes[node] = {"dl": [], "ul": []}
+        if node not in self.nodes_dict:
+            node.name = f"{len(self.nodes_dict)}_" + node.name
+            self.nodes_dict[node] = {"dl": [], "ul": []}
 
     def _add_link(self, link: Channel):
         """Add a link to the network."""
-        link.name = f"{len(self.links)}" + link.name
+        link.name = f"{len(self.links)}_" + link.name
         self.links.append(link)
         self.add_nodes(link.tx)
-        self.nodes[link.tx]["dl"].append((link.rx, link))
+        self.nodes_dict[link.tx]["dl"].append((link.rx, link))
         self.add_nodes(link.rx)
-        self.nodes[link.rx]["ul"].append((link.tx, link))
+        self.nodes_dict[link.rx]["ul"].append((link.tx, link))
 
     def add_links(self, links):
         """Add links to the network."""
@@ -56,15 +65,15 @@ class Network:
 
     def _remove_node(self, node: AntennaArray):
         """Remove a node and all links associated with it from the network."""
-        if node in self.nodes:
-            for _, link in self.nodes[node]["dl"]:
+        if node in self.nodes_dict:
+            for _, link in self.nodes_dict[node]["dl"]:
                 # the node is the tx; remove ul from link.rx
                 self.links.remove(link)
-                self.nodes[link.rx]["ul"].remove((node, link))
-            for _, link in self.nodes[node]["ul"]:
+                self.nodes_dict[link.rx]["ul"].remove((node, link))
+            for _, link in self.nodes_dict[node]["ul"]:
                 # the node is the rx; remove dl from link.tx
                 self.links.remove(link)
-                self.nodes[link.tx]["dl"].remove((node, link))
+                self.nodes_dict[link.tx]["dl"].remove((node, link))
 
     def remove_nodes(self, nodes):
         """Remove nodes from the network."""
@@ -77,8 +86,8 @@ class Network:
     def _remove_link(self, link: Channel):
         """Remove a link from the network."""
         self.links.remove(link)
-        self.nodes[link.tx]["dl"].remove((link.rx, link))
-        self.nodes[link.rx]["ul"].remove((link.tx, link))
+        self.nodes_dict[link.tx]["dl"].remove((link.rx, link))
+        self.nodes_dict[link.rx]["ul"].remove((link.tx, link))
 
     def remove_links(self, links):
         """Remove links from the network."""
@@ -115,7 +124,7 @@ class Network:
         """Get the interference of the link."""
         # interference is the sum of bf gains of all other ul links of the rx
         interference_lin = 0
-        for _, l in self.nodes[link.rx]["ul"]:
+        for _, l in self.nodes_dict[link.rx]["ul"]:
             if l != link:
                 interference_lin += self.signal_power(l, linear=True)
         return (
@@ -151,7 +160,7 @@ class Network:
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
         if ax is None:
             fig, ax = plt.subplots(**kwargs)
-        for node, value in self.nodes.items():
+        for node, value in self.nodes_dict.items():
             # plot nodes
             node_loc = node.location[coord_idx]
             # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
@@ -191,7 +200,7 @@ class Network:
         """Plot the network in 3D."""
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, **kwargs)
-        for node, value in self.nodes.items():
+        for node, value in self.nodes_dict.items():
             # plot nodes
             node_loc = node.location
             ax.scatter(*node_loc, s=70, facecolors="k", label=node.name)

@@ -33,6 +33,7 @@ class MIMOEnv(gym.Env):
         self.target_meas = None
         self.best_meas = []
         self.best_weights = []
+        self.metadata = {"render.modes": ["human"]}
 
     def __str__(self):
         return self.name
@@ -40,7 +41,7 @@ class MIMOEnv(gym.Env):
     @property
     def controlled_weights(self):
         return [node.weights for node in self.controlled_nodes]
-    
+
     @property
     def target_links_sinr(self):
         return [self.network.sinr(link) for link in self.target_links]
@@ -140,10 +141,12 @@ class MIMOEnv(gym.Env):
         num_plots = len(self.controlled_nodes)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
         num_rows = np.ceil(num_plots / num_cols).astype(int)
-        fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
-        for node, ax in zip(self.controlled_nodes, np.ravel(axes)):
+        fig, axes = plt.subplots(
+            num_rows, num_cols, figsize=(5 * num_cols, 5 * num_rows), **kwargs
+        )
+        for node, ax, weights in zip(self.controlled_nodes, np.ravel(axes), self.best_weights[-1]):
             if best_gain:
-                node.plot_gain(ax=ax, weights=self.best_weights[-1])
+                node.plot_gain(ax=ax, weights=weights)
             else:
                 node.plot_gain(ax=ax)
             title = ax.get_title()
@@ -307,15 +310,9 @@ class MIMOEnv(gym.Env):
         return obs, self.get_info()
 
     def render(self, mode="human"):
-        if mode == "human":
-            # print(self.get_info())
-            # clear previous plots
-            plt.close("all")
-            self.plot(dpi=150)
-            self.plot_gain(best_gain=True, dpi=300)
-            plt.show()
-        elif mode == "rgb_array":
-            raise NotImplementedError
-        else:
-            raise ValueError(f"Invalid mode: {mode}")
+        # if mode == "human":
+        plt.close("all")
+        self.plot(dpi=150)
+        self.plot_gain(best_gain=True, dpi=300)
+        plt.show()
         return None
