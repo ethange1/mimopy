@@ -40,6 +40,10 @@ class MIMOEnv(gym.Env):
     @property
     def controlled_weights(self):
         return [node.weights for node in self.controlled_nodes]
+    
+    @property
+    def target_links_sinr(self):
+        return [self.network.sinr(link) for link in self.target_links]
 
     # Network related methods
     @classmethod
@@ -277,6 +281,7 @@ class MIMOEnv(gym.Env):
             "tolerance": self.tolerance,
             "best_meas": self.best_meas[-1],
             "best_weights": self.best_weights[-1],
+            "controlled_weights": self.controlled_weights,
         }
 
     def get_done(self):

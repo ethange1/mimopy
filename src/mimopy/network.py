@@ -39,7 +39,7 @@ class Network:
 
     def _add_link(self, link: Channel):
         """Add a link to the network."""
-        link.name += f"_{len(self.links)}"
+        link.name = f"{len(self.links)}" + link.name
         self.links.append(link)
         self.add_nodes(link.tx)
         self.nodes[link.tx]["dl"].append((link.rx, link))

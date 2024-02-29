@@ -1,5 +1,6 @@
 from typing import Any
 import numpy as np
+import numpy.linalg as LA
 from numpy import log10, log2
 
 
@@ -80,7 +81,7 @@ class Channel:
             self._channel_matrix = (
                 channel_matrix
                 * np.sqrt(self.normalized_channel_energy)
-                / np.linalg.norm(channel_matrix, ord="fro")
+                / LA.norm(channel_matrix, ord="fro")
             )
         else:
             self._channel_matrix = channel_matrix
@@ -102,7 +103,7 @@ class Channel:
         """Beamforming gain in linear scale. Note that the transmit weights are
         normalized to have unit norm."""
         f = self.tx.weights.reshape(-1, 1)
-        f /= np.linalg.norm(f)
+        f = f / LA.norm(f)
         H = self.channel_matrix
         w = self.rx.weights.reshape(-1, 1)
         return float(np.abs(w.conj().T @ H @ f) ** 2)
@@ -126,7 +127,7 @@ class Channel:
     def bf_noise_power_lin(self):
         """Noise power after beamforming in linear scale."""
         w = self.rx.weights.reshape(1, -1)
-        return float(np.linalg.norm(w) ** 2 * self.noise_power_lin)
+        return float(LA.norm(w) ** 2 * self.noise_power_lin)
 
     @property
     def bf_noise_power(self) -> float:
