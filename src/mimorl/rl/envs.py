@@ -61,7 +61,7 @@ class MIMOEnv(gym.Env):
         return env
 
     def add_target_links(self, links):
-        """Add a target link to the environment."""
+        """Add target links to the environment."""
         if isinstance(links, Iterable):
             for link in links:
                 if link not in self.target_links:
@@ -71,7 +71,7 @@ class MIMOEnv(gym.Env):
                 self.target_links.append(links)
 
     def remove_target_links(self, links):
-        """Remove a target link from the environment."""
+        """Remove target links from the environment."""
         if isinstance(links, Iterable):
             for link in links:
                 self.target_links.remove(link)
