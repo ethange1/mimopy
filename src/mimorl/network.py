@@ -146,7 +146,7 @@ class Network:
             self.interference(link, linear=True)
             + self.bf_noise_power(link, linear=True)
         )
-        return sinr_lin if linear else 10 * log10(sinr_lin)
+        return sinr_lin if linear else 10 * log10(sinr_lin + np.finfo(float).tiny)
 
     def spectral_efﬁciency(self, link) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""

@@ -185,6 +185,11 @@ class AntennaArray:
     def reset(self):
         """reset weights to 1"""
         self.weights = np.ones(self.num_antennas)
+    
+    def normalize_weights(self):
+        """Normalize the weights of the antennas to have unit norm."""
+        if LA.norm(self.weights) != 0:
+            self.weights /= LA.norm(self.weights)
 
     def set_weights(self, weights, index=None, normalize=True):
         """Set the weights of the antennas.
@@ -201,16 +206,19 @@ class AntennaArray:
         normalize : bool, optional
             If True, the weights are normalized to have unit norm. Default is True.
         """
-        weights = np.asarray(weights).reshape(-1)
-        if normalize:
-            weights = weights / LA.norm(weights)
         if index is None:
-            if isinstance(weights, float):
+            if np.isscalar(weights):
                 self.weights = weights * np.ones(self.num_antennas)
+            elif len(weights) != self.num_antennas:
+                raise ValueError(
+                    "The length of weights must match the number of antennas"
+                )
             else:
-                self.weights = weights
+                self.weights = np.asarray(weights).reshape(-1)
         else:
-            self.weights[index] = weights
+            self.weights[index] = weights.reshape(-1)
+        if normalize:
+            self.normalize_weights()
 
     def get_weights(self, coordinates=None):
         """Get the weights of the antennas.

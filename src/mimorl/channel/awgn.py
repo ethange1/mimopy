@@ -6,7 +6,7 @@ from numpy import log10, log2
 
 # from ..array import AntennaArray
 class Channel:
-    """Base class for Channel.
+    """Base class for AWGN Channel.
 
     Attributes
     ----------
@@ -31,7 +31,6 @@ class Channel:
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
-
         self.normalized_channel_energy = False
 
         # for key, value in kwargs.items():
@@ -86,6 +85,15 @@ class Channel:
         else:
             self._channel_matrix = channel_matrix
 
+    @property
+    def H(self):
+        """Alias for channel_matrix."""
+        return self.channel_matrix
+
+    @H.setter
+    def H(self, H):
+        self.channel_matrix = H
+
     # ========================================================
     # Measurements
     # ========================================================
@@ -106,7 +114,7 @@ class Channel:
         f = f / LA.norm(f)
         H = self.channel_matrix
         w = self.rx.weights.reshape(-1, 1)
-        return float(np.abs(w.conj().T @ H @ f) ** 2)
+        return float(np.abs(w.T @ H @ f) ** 2)  # TODO: standardize this
 
     @property
     def bf_gain(self) -> float:

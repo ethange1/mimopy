@@ -107,7 +107,6 @@ class MIMOEnv(gym.Env):
             )
             # ax.legend()
         for link in self.target_links:
-
             ul_loc = link.tx.location[coord_idx]
             dl_loc = link.rx.location[coord_idx]
             ax.plot(
@@ -116,7 +115,7 @@ class MIMOEnv(gym.Env):
                 "c-",
                 label="Target Link",
             )
-            # ax.legend()
+        ax.invert_yaxis()
         plt.show()
 
     def plot_3d(self, **kwargs):
@@ -153,6 +152,7 @@ class MIMOEnv(gym.Env):
                 node.plot_gain(ax=ax)
             title = ax.get_title()
             ax.set_title(f"{node.name}: {title}")
+        plt.tight_layout()
         plt.show()
 
     # Gym related methods
@@ -223,7 +223,7 @@ class MIMOEnv(gym.Env):
     # Update the following methods for the custom environment
     # ========================================================================
 
-    def update_weights(self, action):
+    def update_weights(self, action, **kwargs):
         """Update the weights of the controlled nodes."""
         # split the action into amplitude and phase changes
         nums_antennas = [node.num_antennas for node in self.controlled_nodes]
@@ -234,30 +234,41 @@ class MIMOEnv(gym.Env):
             # clip the changes to the max values
             new_amp = np.clip(np.abs(node.weights) + change[0], 0, node.power)
             new_phase = np.angle(node.weights) + change[1]
-            new_phase -= new_phase[0]  # normalize the phase to the first antenna
-            node.set_weights(new_amp * np.exp(1j * new_phase))
+            # new_phase -= new_phase[0]  # normalize the phase to the first antenna
+            node.set_weights(new_amp * np.exp(1j * new_phase), **kwargs)
 
     def update_tolerance(self):
         self.tolerance *= 1 - self.tolerance_decay
 
     def get_reward(self, meas):
-        return meas - np.mean(self.best_meas)
+        """Calcuate the reward
 
-    def process_meas(self, meas) -> float:
-        """Process the measurements. Called in step()."""
-        return np.mean(meas)
+        Args:
+            meas (np.ndarray): The measurements from the environment
+
+        Returns:
+            reward (float): The reward
+            is_best (bool): Whether the reward should be recorded as the best."""
+        raise NotImplementedError("get_reward() must be implemented in a subclass.")
+        reward = np.mean(meas) - np.mean(self.best_meas)
+        return reward, reward > 0
+
+    # def process_meas(self, meas) -> float:
+    #     """Process the measurements. Called in step()."""
+    #     return np.mean(meas)
 
     # ========================================================================
     # Environment related methods
     # ========================================================================
 
     def update_reward(self, meas):
+        # proc_meas = self.process_meas(meas)
         if len(self.best_meas) == 0:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
             return 0
-        reward = self.get_reward(meas)
-        if reward > 0:
+        reward, is_best = self.get_reward(meas)
+        if is_best:
             self.best_meas.append(meas)
             self.best_weights.append(self.controlled_weights)
             if len(self.best_meas) > self.meas_buffer_size:
@@ -287,6 +298,7 @@ class MIMOEnv(gym.Env):
             "best_meas": self.best_meas[-1],
             "best_weights": self.best_weights[-1],
             "controlled_weights": self.controlled_weights,
+            # "processed_meas": self.process_meas(self.best_meas[-1]),
         }
 
     def get_done(self):
@@ -298,8 +310,7 @@ class MIMOEnv(gym.Env):
     def step(self, action):
         self.update_weights(action)
         obs = self.get_obs()
-        meas = self.process_meas(obs[self.metrics])
-        reward = self.update_reward(meas)
+        reward = self.update_reward(obs[self.metrics])
         done = self.get_done()
         return obs, reward, done, False, self.get_info()
 
