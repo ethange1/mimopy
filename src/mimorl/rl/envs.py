@@ -158,7 +158,7 @@ class MIMOEnv(gym.Env):
     # Gym related methods
     @property
     def action_space(self):
-        """Return the action space based on the controlled nodes. 
+        """Return the action space based on the controlled nodes.
         The action space is a Box space with shape (2, total_num_antennas)"""
         # get the total number of antennas for all controlled nodes
         total_num_antennas = np.sum(
@@ -170,7 +170,7 @@ class MIMOEnv(gym.Env):
         # create the action space via outer product (2x1) x (1xN) -> (2xN)
         # N is the total number of controlled antennas across all nodes
         space = np.outer(amp_phase_change, np.ones(total_num_antennas))
-        space = np.float16(space)
+        # space = np.float16(space)
         return gym.spaces.Box(low=-space, high=space)
 
     @property
@@ -182,7 +182,7 @@ class MIMOEnv(gym.Env):
         change = np.array([self.max_amp_change, self.max_phase_change * np.pi / 180])
         for node in self.controlled_nodes:
             space = np.outer(change, np.ones(node.num_antennas)).reshape(2, -1)
-            space = np.float16(space)
+            # space = np.float16(space)
             space = gym.spaces.Box(low=-space, high=space)
             space_list.append(space)
         return gym.spaces.Tuple(space_list)
@@ -205,26 +205,22 @@ class MIMOEnv(gym.Env):
                     low=-np.inf,
                     high=np.inf,
                     shape=(len(self.target_links),),
-                    dtype=np.float16,
                 ),
                 "spectral_effeciency": gym.spaces.Box(
                     low=-np.inf,
                     high=np.inf,
                     shape=(len(self.target_links),),
-                    dtype=np.float16,
                 ),
                 "gain": gym.spaces.Box(
                     low=-np.inf,
                     high=np.inf,
                     shape=(len(self.target_links),),
-                    dtype=np.float16,
                 ),
                 "amp": gym.spaces.Box(low=0, high=np.inf, shape=(total_num_antennas,)),
                 "phase": gym.spaces.Box(
                     low=-np.pi,
                     high=np.pi,
                     shape=(total_num_antennas,),
-                    dtype=np.float16,
                 ),
             }
         )
@@ -242,11 +238,12 @@ class MIMOEnv(gym.Env):
         """Update the weights of the controlled nodes."""
         # split the action into amplitude and phase changes
         nums_antennas = [node.num_antennas for node in self.controlled_nodes]
-        changes = np.split(
-            action.reshape((2, -1)), np.cumsum(nums_antennas)[:-1], axis=1
-        )
+        # changes = np.split(
+        #     action.reshape((2, -1)), np.cumsum(nums_antennas)[:-1], axis=1
+        # )
+        changes = np.split(action.flatten(), np.cumsum(nums_antennas)[:-1] * 2)
         for node, change in zip(self.controlled_nodes, changes):
-            # clip the changes to the max values
+            change = change.reshape(2, -1)
             new_amp = np.clip(np.abs(node.weights) + change[0], 0, node.power)
             new_phase = np.angle(node.weights) + change[1]
             new_phase -= new_phase[0]  # normalize the phase to the first antenna
