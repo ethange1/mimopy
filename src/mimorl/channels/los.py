@@ -41,14 +41,22 @@ class LosChannel(Channel):
     #     return self.get_bf_gain() - self.get_bf_noise()
 
     def realize(self, az=None, el=None):
-        """Realize the channel."""
-        _, az_new, el_new = self.get_relative_position(
-            self.tx.array_center, self.rx.array_center
-        )
-        if az is None:
-            az = az_new
-        if el is None:
-            el = el_new
+        """Realize the channel.
+        
+        Parameters
+        ----------
+        az, el: float, optional
+            AoA/AoD. If not specified, the angles are
+            calculated based on the relative position of the transmitter and receiver.
+        """
+        if az is None or el is None:
+            _, az_new, el_new = self.get_relative_position(
+                self.tx.array_center, self.rx.array_center
+            )
+            if az is None:
+                az = az_new
+            if el is None:
+                el = el_new
         self.set_angular_separation()
         tx_response = self.tx.get_array_response(self.az, self.el)
         rx_response = self.rx.get_array_response(self.az + np.pi, self.el + np.pi)

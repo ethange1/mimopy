@@ -6,7 +6,7 @@ import numpy as np
 from numpy import log10, log2
 
 from .antenna_array import AntennaArray
-from .channel import *
+from .channels import *
 import matplotlib.pyplot as plt
 
 
