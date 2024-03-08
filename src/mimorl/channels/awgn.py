@@ -8,15 +8,19 @@ from numpy import log10, log2
 class Channel:
     """Base class for AWGN Channel.
 
-    Attributes
+     Attributes
     ----------
-        name (str): Channel name. tx (AntennaArray): Transmit array. rx (AntennaArray):
-        Receive array. noise_power (float): Noise power in dBm.
+        name (str): Channel name.
+        tx (AntennaArray): Transmit array.
+        rx (AntennaArray): Receive array.
+        num_antennas_tx (int): Number of transmit antennas.
+        num_antennas_rx (int): Number of receive antennas.
         propagation_velocity (float): Propagation velocity in meters per second.
         carrier_frequency (float): Carrier frequency in Hertz.
         carrier_wavelength (float): Carrier wavelength in meters.
-        normalized_channel_energy (float): Normalized channel energy. If False
-        then the channel matrix is not normalized.
+        normalized_channel_energy (float): Normalized channel energy.
+        is_channel_energy_normalized (bool): Indicates if the channel energy is normalized.
+
     """
 
     def __init__(self, tx=None, rx=None, name=None, *args, **kwargs):
@@ -32,11 +36,6 @@ class Channel:
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
         self.normalized_channel_energy = False
-
-        # for key, value in kwargs.items():
-        #     setattr(self, key, value)
-        # if tx is not None and rx is not None:
-        #     self.realize()
 
     def __str__(self):
         return self.name

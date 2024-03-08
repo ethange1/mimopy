@@ -585,15 +585,15 @@ class AntennaArray:
         #     array_response[i] = self.get_array_gain(az[i], el * np.pi / 180, db=db)
 
         if cut_along == "el":
-            el = np.asarray(cut)
-            az = np.asarray(angles)
+            el = np.asarray(cut) * np.pi / 180
+            az = np.asarray(angles) * np.pi / 180
         elif cut_along == "az":
-            az = np.asarray(cut)
-            el = np.asarray(angles)
+            az = np.asarray(cut) * np.pi / 180
+            el = np.asarray(angles) * np.pi / 180
         else:
             raise ValueError("cut_along must be 'el' or 'az'")
         # vectorized version
-        array_response = self.get_array_gain(az, el, db=db)
+        array_response = self.get_array_gain(az, el, db=db, use_deg=False)
 
         if ax == None:
             if polar:
@@ -638,7 +638,7 @@ class AntennaArray:
         min_gain=None,
         **kwargs,
     ):
-        gain = self.get_array_gain(az, el, db=True)
+        gain = self.get_array_gain(az, el, db=True, use_deg=True)
         az_grid, el_grid = np.meshgrid(az, el)
 
         if max_gain is None:
