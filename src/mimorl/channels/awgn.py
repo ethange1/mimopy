@@ -19,8 +19,6 @@ class Channel:
         carrier_frequency (float): Carrier frequency in Hertz.
         carrier_wavelength (float): Carrier wavelength in meters.
         normalized_channel_energy (float): Normalized channel energy.
-        is_channel_energy_normalized (bool): Indicates if the channel energy is normalized.
-
     """
 
     def __init__(self, tx=None, rx=None, name=None, *args, **kwargs):
@@ -35,7 +33,7 @@ class Channel:
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
-        self.normalized_channel_energy = False
+        self.normalize_channel_energy = False
 
     def __str__(self):
         return self.name

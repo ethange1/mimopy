@@ -10,10 +10,9 @@ class LosChannel(Channel):
     -----------------
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, normalize_channel_energy=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.is_channel_energy_normalized = True
-        self.realize()
+        self.normalize_channel_energy = normalize_channel_energy
 
     # @property
     # def bf_noise_lin(self):

@@ -11,11 +11,13 @@ class RicianChannel(Channel):
         K (float): Rician K-factor.
     """
 
-    def __init__(self, K=10, *args, **kwargs):
+    def __init__(self, K=10, los=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.los = LosChannel(*args, **kwargs)
+        if los is None:
+            self.los = LosChannel(tx=self.tx, rx=self.rx)
+        else:
+            self.los = los
         self.K = K
-        self.realize()
 
     def realize(self):
         """Realize the channel."""
