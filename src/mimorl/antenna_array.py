@@ -19,7 +19,7 @@ class AntennaArray:
         unit weight.
     """
 
-    def __init__(self, num_antennas, coordinates="[0, 0, 0]"):
+    def __init__(self, num_antennas, coordinates=[0, 0, 0]):
         self.num_antennas = num_antennas
         self.coordinates = np.array(coordinates)
         self.weights = np.ones(num_antennas)
@@ -117,7 +117,7 @@ class AntennaArray:
         return ula
 
     @classmethod
-    def initialize_upa(cls, num_rows, num_cols, plane="xy", array_center=None):
+    def initialize_upa(cls, num_rows, num_cols, plane="xy", array_center=(0, 0, 0)):
         """Empties the array and creates a half-wavelength spaced,
         uniform plannar array in the desired plane.
 
@@ -158,8 +158,9 @@ class AntennaArray:
             ).T
         else:
             raise ValueError("plane must be 'xy', 'yz' or 'xz'")
-        coordinates = cls._translate_coordinates(coordinates)
-        return cls(num_rows * num_cols, coordinates).translate()
+        upa = cls(num_rows * num_cols, coordinates)
+        upa.array_center = array_center
+        return upa
 
     @classmethod
     def from_file(cls, filename):
@@ -185,7 +186,7 @@ class AntennaArray:
     def reset(self):
         """reset weights to 1"""
         self.weights = np.ones(self.num_antennas)
-    
+
     def normalize_weights(self):
         """Normalize the weights of the antennas to have unit norm."""
         if LA.norm(self.weights) != 0:
@@ -410,21 +411,32 @@ class AntennaArray:
 
         Parameters
         ----------
-        az : float
+        az : float, array_like
             Azimuth angle in radians.
-        el : float
+        el : float, array_like
             Elevation angle in radians.
+
+        Returns
+        -------
+        array_response: The array response vector up to 3 dimensions. The shape of the array is
+        (len(az), len(el), len(coordinates)) and is squeezed if az and/or el are scalars.
         """
 
         # calculate the distance of each element from the first element
         dx = self.coordinates[:, 0] - self.coordinates[0, 0]
         dy = self.coordinates[:, 1] - self.coordinates[0, 1]
         dz = self.coordinates[:, 2] - self.coordinates[0, 2]
-        dx = dx.reshape(-1, 1)
-        dy = dy.reshape(-1, 1)
-        dz = dz.reshape(-1, 1)
+        # dx = dx.reshape(-1, 1)
+        # dy = dy.reshape(-1, 1)
+        # dz = dz.reshape(-1, 1)
 
-        array_response_vector = np.exp(
+        dx = np.expand_dims(dx, (0, 1))
+        dy = np.expand_dims(dy, (0, 1))
+        dz = np.expand_dims(dz, (0, 1))
+        az = np.expand_dims(np.asarray(az).flatten(), (1, 2))
+        el = np.expand_dims(np.asarray(el).flatten(), (0, 2))
+
+        array_response = np.exp(
             1j
             * 2
             * np.pi
@@ -434,7 +446,7 @@ class AntennaArray:
                 + dz * np.sin(el)
             )
         )
-        return array_response_vector
+        return np.squeeze(array_response)
 
     def get_array_gain(self, az, el, db=True):
         """Returns the array gain at a given azimuth and elevation in dB.
@@ -446,14 +458,22 @@ class AntennaArray:
         el : float
             Elevation angle in radians.
         db : bool, optional
-
             If True, the gain is returned in dB. Default is True.
+
+        Returns
+        -------
+        array_gain: The array gain at the given azimuth and elevation
+            with shape (len(az), len(el))
         """
 
-        array_response_vector = self.get_array_response(az, el)
-        gain = (self.weights.conj().T @ array_response_vector) ** 2
+        array_response = self.get_array_response(az, el)
+        # multiply gain by the weights at the last dimension
+        gain = (array_response @ self.weights.conj().reshape(-1, 1)) ** 2
+        mag = np.abs(gain)
+        phase = np.angle(gain)
+        # print(gain)
         if db:
-            return 10 * log10(np.abs(gain + np.finfo(float).tiny))
+            return 10 * log10(mag + np.finfo(float).tiny)
         return gain
 
     def get_conjugate_beamformer(self, az, el):
@@ -490,71 +510,95 @@ class AntennaArray:
     # Plotting
     ############################
 
+    def plot_gain_el(self, cut=0, angles=np.linspace(-89, 89, 178), **kwargs):
+        """Plot the array pattern at a given elevation."""
+        return self.plot_gain(cut, angles, "el", **kwargs)
+    
+    def plot_gain_az(self, cut=0, angles=np.linspace(-89, 89, 178), **kwargs):
+        """Plot the array pattern at a given azimuth."""
+        return self.plot_gain(cut, angles, "az", **kwargs)
+
     def plot_gain(
         self,
-        el=0,
-        az_range=178,
-        az_center=0,
-        num_points=178,
+        cut=0,
+        angles=np.linspace(-89, 89, 178),
+        cut_along="el",
         weights=None,
         polar=False,
         db=True,
         ax=None,
         **kwargs,
     ):
-        """Plot the array pattern at a given elevation.
+        """Plot the array pattern at a given elevation or azimuth.
 
         Parameters
         ----------
-        el : float, optional
-            Elevation angle in degrees. Default is 0.
-        az_range : float, optional
-            Range of azimuth angles in degrees. Default is 360.
-        az_center : float, optional
-            Center of azimuth angles in degrees. Default is 0.
-        num_points : int, optional
-            Number of points at which the pattern is to be calculated.
-            Default is 360.
+        cut : float
+            Elevation or azimuth angle in degrees. Angle at which the pattern is to be plotted.
+        angles : array_like
+            Azimuth or elevation angles in degrees.
+        cut_along : str, optional
+            Axis along which the cut is to be made. Takes value 'el' or 'az'. Default is 'el'.
+        weights : array_like, optional
+            Weights of the antennas. If not given, the weights are not changed.
+        polar : bool, optional
+            If True, the pattern is plotted in polar coordinates. Default is False.
+        db : bool, optional
+            If True, the gain is plotted in dB. Default is True.
+        ax : matplotlib.axes.Axes, optional
+            The matplotlib axes object. If not given, a new figure is created.
         **kwargs : optional
-            matplotlib.pyplot.fig arguments.
+            matplotlib.pyplot.plot arguments.
         """
         if weights is not None:
             orig_weights = self.get_weights()
             self.set_weights(weights)
-        az = (
-            np.linspace(az_center - az_range / 2, az_center + az_range / 2, num_points)
-            * np.pi
-            / 180
-        )
-        array_response = np.zeros(num_points)
-        for i in range(num_points):
-            array_response[i] = self.get_array_gain(az[i], el * np.pi / 180, db=db)
-        # if "label" not in kwargs:
-        # kwargs["label"] = r"Elevation = {} deg".format(el)
+        # az = (
+        #     np.linspace(az_center - az_range / 2, az_center + az_range / 2, num_points)
+        #     * np.pi
+        #     / 180
+        # )
+        # array_response = np.zeros(num_points)
+        # for i in range(num_points):
+        #     array_response[i] = self.get_array_gain(az[i], el * np.pi / 180, db=db)
+
+        if cut_along == "el":
+            el = np.asarray(cut) * np.pi / 180
+            az = np.asarray(angles) * np.pi / 180
+        elif cut_along == "az":
+            az = np.asarray(cut) * np.pi / 180
+            el = np.asarray(angles) * np.pi / 180
+        else:
+            raise ValueError("cut_along must be 'el' or 'az'")
+        # vectorized version
+        array_response = self.get_array_gain(az, el, db=db)
 
         if ax == None:
-            fig, ax = plt.subplots(**kwargs)
+            if polar:
+                fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, **kwargs)
+            else:
+                fig, ax = plt.subplots(**kwargs)
         if polar:
-            ax = plt.gca(projection="polar")
-            ax.plot(az, array_response)
+            ax.plot(angles * np.pi / 180, array_response)
             ax.set_theta_zero_location("N")
             ax.set_theta_direction(-1)
-            ax.set_rlabel_position(0)
-            ax.set_rticks([-20, -10, 0])
+            ax.set_rlabel_position(10)
+            # ax.set_rticks([-20, -10, 0])
             # ax.set_rlim(-20, 0)
         else:
-            ax.plot(az * 180 / np.pi, array_response)
+            ax.plot(angles, array_response)
             # ax.set_ylim(-(max(array_response)), max(array_response) + 10)
         ax.set_xlabel("Azimuth (deg)")
         ax.set_ylabel("Gain (dB)")
         title = (
-            f"Elevation = {el} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
+            f"Elevation = {cut} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
         )
         ax.set_title(title)
         ax.grid(True)
         if weights is not None:
             self.set_weights(orig_weights)
         if ax is None:
+            plt.tight_layout()
             plt.show()
         return ax
 
@@ -598,39 +642,42 @@ class AntennaArray:
             / 180
         )
         az_grid, el_grid = np.meshgrid(az, el)
-        array_response = np.zeros((num_points, num_points), dtype=complex)
-        for i in range(num_points):
-            for j in range(num_points):
-                array_response[i, j] = self.get_array_gain(az_grid[i, j], el_grid[i, j])
-        array_response = np.abs(array_response)
-        array_response = 20 * log10(
-            array_response / np.max(array_response) + np.finfo(float).tiny
-        )
-        fig = plt.figure(**kwargs)
+        # array_response = np.zeros((num_points, num_points), dtype=complex)
+        # for i in range(num_points):
+        #     for j in range(num_points):
+        #         array_response[i, j] = self.get_array_gain(az_grid[i, j], el_grid[i, j])
+        # array_response = np.abs(array_response)
+        # array_response = 20 * log10(
+        #     array_response / np.max(array_response) + np.finfo(float).tiny
+        # )
+
+        # vectorized version
+        array_gain = self.get_array_gain(az, el, db=True)
 
         if polar:
-            # TODO: fix polar plot
-            if ax is None:
-                ax = plt.gca(projection="polar")
-            ax.plot(
-                az_grid,
-                el_grid,
-                array_response,
-                # cmap=cm.coolwarm,
-                linewidth=0,
-            )
-            ax.set_theta_zero_location("N")
-            ax.set_theta_direction(-1)
-            ax.set_rlabel_position(0)
-            ax.set_rticks([-20, -10, 0])
-            ax.set_rlim(-20, 0)
+            raise NotImplementedError
+            # # TODO: fix polar plot
+            # if ax is None:
+            #     ax = plt.gca(projection="polar")
+            # ax.plot(
+            #     az_grid,
+            #     el_grid,
+            #     array_gain,
+            #     # cmap=cm.coolwarm,
+            #     linewidth=0,
+            # )
+            # ax.set_theta_zero_location("N")
+            # ax.set_theta_direction(-1)
+            # ax.set_rlabel_position(0)
+            # ax.set_rticks([-20, -10, 0])
+            # ax.set_rlim(-20, 0)
         else:
             if ax is None:
-                ax = fig.gca()
+                fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
             ax.plot_surface(
                 az_grid * 180 / np.pi,
                 el_grid * 180 / np.pi,
-                array_response,
+                array_gain,
                 cmap=cm.coolwarm,
                 linewidth=0,
             )
@@ -701,3 +748,11 @@ class AntennaArray:
         if ax is None:
             plt.show()
         return ax
+
+    def plot(self, **kwargs):
+        """Plot the array."""
+        return self.plot_array(**kwargs)
+
+    def plot_3d(self, **kwargs):
+        """Plot the array in 3D."""
+        return self.plot_array_3d(**kwargs)
