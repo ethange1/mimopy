@@ -9,22 +9,31 @@ class RicianChannel(Channel):
     Unique Attributes
     ----------
         K (float): Rician K-factor.
+        H_los (np.ndarray): Line-of-sight channel matrix.
+        H_nlos (np.ndarray): Non-line-of-sight channel matrix.
     """
 
-    def __init__(self, K=10, los=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tx, rx, K=10, los=None, *args, **kwargs):
+        super().__init__(tx=tx, rx=rx, *args, **kwargs)
         if los is None:
-            self.los = LosChannel(tx=self.tx, rx=self.rx)
+            self.los = LosChannel(tx=self.tx, rx=self.rx).realize()
         else:
             self.los = los
         self.K = K
+        self.H_nlos = None
 
-    def realize(self):
-        """Realize the channel."""
-        h_los = self.los.channel_matrix
-        h_nlos = np.sqrt(1 / 2) * (
-            np.random.randn(*h_los.shape) + 1j * np.random.randn(*h_los.shape)
+    def realize(self, seed=None):
+        """Realize the channel. If random is True, the non-line-of-sight channel
+        matrix is generated randomly."""
+        self.H_los = self.los.channel_matrix
+        # print("Generating random NLOS channel matrix.")
+        np.random.seed(seed)
+        self.H_nlos = np.sqrt(1 / 2) * (
+            np.random.randn(*self.H_los.shape)
+            + 1j * np.random.randn(*self.H_los.shape)
         )
         self.channel_matrix = (
-            np.sqrt(self.K / (self.K + 1)) * h_los + np.sqrt(1 / (self.K + 1)) * h_nlos
+            np.sqrt(self.K / (self.K + 1)) * self.H_los
+            + np.sqrt(1 / (self.K + 1)) * self.H_nlos
         )
+        return self

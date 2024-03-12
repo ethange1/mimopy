@@ -33,7 +33,7 @@ class Channel:
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
-        self.normalize_channel_energy = False
+        self.normalized_channel_energy = False
 
     def __str__(self):
         return self.name
@@ -82,14 +82,7 @@ class Channel:
         else:
             self._channel_matrix = channel_matrix
 
-    @property
-    def H(self):
-        """Alias for channel_matrix."""
-        return self.channel_matrix
-
-    @H.setter
-    def H(self, H):
-        self.channel_matrix = H
+    H = channel_matrix
 
     # ========================================================
     # Measurements
@@ -237,3 +230,20 @@ class Channel:
     def carrier_wavelength(self, carrier_wavelength):
         self._carrier_wavelength = carrier_wavelength
         self._carrier_frequency = self.propagation_velocity / carrier_wavelength
+
+    @staticmethod
+    def get_relative_position(loc1, loc2):
+        """Returns the relative position (range, azimuth and elevation) between 2 locations.
+
+        Parameters
+        ----------
+            loc1, loc2: array_like, shape (3,)
+                Location of the 2 points.
+        """
+        loc1 = np.asarray(loc1).reshape(3)
+        loc2 = np.asarray(loc2).reshape(3)
+        dxyz = dx, dy, dz = loc2 - loc1
+        range = np.linalg.norm(dxyz)
+        az = np.arctan2(dy, dx)
+        el = np.arcsin(dz / range)
+        return range, az, el

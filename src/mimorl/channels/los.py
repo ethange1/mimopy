@@ -8,40 +8,30 @@ class LosChannel(Channel):
 
     Unique Attributes
     -----------------
+    aoa, aod: float, optional
+        AoA/AoD. If not specified, the angles are
+        calculated based on the relative position of the transmitter and receiver.
     """
 
-    def __init__(self, normalize_channel_energy=True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tx, rx, normalize_channel_energy=True, *args, **kwargs):
+        super().__init__(tx=tx, rx=rx, *args, **kwargs)
         self.normalize_channel_energy = normalize_channel_energy
+        self._az = None
+        self._el = None
 
-    # @property
-    # def bf_noise_lin(self):
-    #     """Noise power after beamforming in linear scale."""
-    #     w = self.rx.weights.reshape(1, -1)
-    #     return np.linalg.norm(w) ** 2 * self.noise_power_lin
+    @property
+    def aoa(self):
+        return (self._az, self._el)
 
-    # @property
-    # def bf_noise(self):
-    #     """Noise power after beamforming in dBm."""
-    #     w = self.rx.weights.reshape(1, -1)
-    #     return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
+    @aoa.setter
+    def aoa(self, _):
+        raise Warning("Use realize() to set the AoA/AoD, ignoring the input.")
 
-    # def get_bf_noise(self, linear=False) -> float:
-    #     """Get the noise power after beamforming in dBm."""
-    #     w = self.rx.get_weights().reshape(1, -1)
-    #     if linear:
-    #         return np.linalg.norm(w) ** 2 * self.noise_power_lin
-    #     return 10 * log10(np.linalg.norm(w) ** 2) + self.noise_power
-
-    # def get_snr(self, linear=False) -> float:
-    #     """Get the signal-to-noise ratio (SNR) of the channel. """
-    #     if linear:
-    #        return self.get_bf_gain(linear) / self.get_bf_noise(linear)
-    #     return self.get_bf_gain() - self.get_bf_noise()
+    aod = aoa
 
     def realize(self, az=None, el=None):
         """Realize the channel.
-        
+
         Parameters
         ----------
         az, el: float, optional
@@ -52,30 +42,14 @@ class LosChannel(Channel):
             _, az_new, el_new = self.get_relative_position(
                 self.tx.array_center, self.rx.array_center
             )
-            if az is None:
-                az = az_new
-            if el is None:
-                el = el_new
-        self.set_angular_separation()
-        tx_response = self.tx.get_array_response(self.az, self.el)
-        rx_response = self.rx.get_array_response(self.az + np.pi, self.el + np.pi)
+            az = az_new if az is None else az
+            el = el_new if el is None else el
+        self._az = az
+        self._el = el
+        tx_response = self.tx.get_array_response(self._az, self._el)
+        rx_response = self.rx.get_array_response(self._az + np.pi, self._el + np.pi)
         # H = np.outer(tx_response, rx_response).T
         H = np.outer(rx_response, tx_response.conj())
         self.channel_matrix = H
+        return self
 
-    @staticmethod
-    def get_relative_position(loc1, loc2):
-        """Returns the relative position (range, azimuth and elevation) between 2 locations.
-
-        Parameters
-        ----------
-            loc1, loc2: array_like, shape (3,)
-                Location of the 2 points.
-        """
-        loc1 = np.asarray(loc1).reshape(3)
-        loc2 = np.asarray(loc2).reshape(3)
-        dxyz = dx, dy, dz = loc2 - loc1
-        range = np.linalg.norm(dxyz)
-        az = np.arctan2(dy, dx)
-        el = np.arcsin(dz / range)
-        return range, az, el
