@@ -29,6 +29,8 @@ class AntennaArray:
         self.spacing = 0.5
         self.frequency = 1e9
 
+    Nr = Nt = property(lambda self: self.num_antennas)
+
     def __str__(self):
         return self.name
 
@@ -37,6 +39,14 @@ class AntennaArray:
 
     def __len__(self):
         return self.num_antennas
+    
+    @property
+    def amp(self):
+        return np.abs(self.weights)
+    
+    @property
+    def phase(self):
+        return np.angle(self.weights)
 
     @property
     def array_center(self):
@@ -717,7 +727,7 @@ class AntennaArray:
 
         if polar:
             az_grid, el_grid, gain = self.cart2sph(az_grid, el_grid, gain)
-        
+
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, **kwargs)
         colors = cm.YlGnBu_r(gain)

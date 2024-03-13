@@ -25,26 +25,40 @@ class Network:
         self.name = name
         self.links = []
         self.nodes_dict = dict()
+        self.target_links = []
+        self.target_nodes = []
 
     def __str__(self):
         return self.name
 
     def __repr__(self):
         return self.name
-    
+
+    # ===================================================================
+    # Links and Nodes
+    # ===================================================================
+
     @property
-    def nodes(self):
+    def nodes(self: Iterable[AntennaArray]):
         return tuple(self.nodes_dict.keys())
-    
+
     @nodes.setter
     def nodes(self, _):
         raise AttributeError("Cannot set nodes directly. Use add_nodes() instead.")
 
-    def add_nodes(self, node: AntennaArray):
+    def _add_node(self, node: AntennaArray):
         """Add a node to the network."""
         if node not in self.nodes_dict:
             node.name = f"{len(self.nodes_dict)}_" + node.name
             self.nodes_dict[node] = {"dl": [], "ul": []}
+
+    def add_nodes(self, nodes: Iterable[AntennaArray]):
+        """Add nodes to the network."""
+        if isinstance(nodes, Iterable):
+            for node in nodes:
+                self._add_node(node)
+        else:
+            self._add_node(nodes)
 
     def _add_link(self, link: Channel):
         """Add a link to the network."""
@@ -55,7 +69,7 @@ class Network:
         self.add_nodes(link.rx)
         self.nodes_dict[link.rx]["ul"].append((link.tx, link))
 
-    def add_links(self, links):
+    def add_links(self, links: Iterable[Channel]):
         """Add links to the network."""
         if isinstance(links, Iterable):
             for link in links:
@@ -96,6 +110,70 @@ class Network:
                 self._remove_link(link)
         else:
             self._remove_link(links)
+
+    # ===================================================================
+    # Target Links and Nodes
+    # ===================================================================
+
+    @property
+    def target_weights(self: Channel):
+        return [node.weights for node in self.target_nodes]
+
+    @target_weights.setter
+    def target_weights(self, _):
+        raise AttributeError(
+            "Cannot set target_weights directly. Use add_target_nodes() instead."
+        )
+
+    def add_target_nodes(self, nodes):
+        """Add target nodes to the network."""
+        if isinstance(nodes, Iterable):
+            for node in nodes:
+                self._add_node(node)
+                self.target_nodes.append(node)
+        else:
+            self._add_node(nodes)
+            self.target_nodes.append(nodes)
+
+    def remove_target_nodes(self, nodes):
+        """Remove target nodes from the network."""
+        if isinstance(nodes, Iterable):
+            for node in nodes:
+                self.target_nodes.remove(node)
+        else:
+            self.target_nodes.remove(nodes)
+
+    def add_target_links(self, links):
+        """Add target links to the network."""
+        if isinstance(links, Iterable):
+            for link in links:
+                self._add_link(link)
+                self.target_links.append(link)
+        else:
+            self._add_link(links)
+            self.target_links.append(links)
+
+    def remove_target_links(self, links):
+        """Remove target links from the network."""
+        if isinstance(links, Iterable):
+            for link in links:
+                self.target_links.remove(link)
+        else:
+            self.target_links.remove(links)
+
+    def _is_target_link(self, link: Channel):
+        return link in self.target_links
+
+    def _is_target_node(self, node: AntennaArray):
+        return node in self.target_nodes
+
+    def is_target(self, obj: Any):
+        if isinstance(obj, Channel):
+            return self._is_target_link(obj)
+        elif isinstance(obj, AntennaArray):
+            return self._is_target_node(obj)
+        else:
+            raise TypeError(f"Object of type {type(obj)} is not supported.")
 
     # ===================================================================
     # Link measurement methods wrapper
@@ -164,7 +242,8 @@ class Network:
             # plot nodes
             node_loc = node.location[coord_idx]
             # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
-            ax.scatter(*node_loc, s=70, facecolors="k", label=node.name)
+            style = "b" if self.is_target(node) else "k"
+            ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
             if show_label:
                 ax.annotate(
                     node.name,
@@ -173,9 +252,10 @@ class Network:
             # plot downlink
             for dl, link in value["dl"]:
                 dl_loc = dl.location[coord_idx]
+                style = "c-" if self.is_target(link) else "k:"
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
-                    "k:",
+                    style,
                 )
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
@@ -203,15 +283,17 @@ class Network:
         for node, value in self.nodes_dict.items():
             # plot nodes
             node_loc = node.location
-            ax.scatter(*node_loc, s=70, facecolors="k", label=node.name)
+            style = "b" if self.is_target(node) else "k"
+            ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
             if show_label:
                 ax.text(*node_loc, node.name)
             # plot downlink
             for dl, link in value["dl"]:
                 dl_loc = dl.location
+                style = "c-" if self.is_target(link) else "k:"
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
-                    "k:",
+                    style,
                 )
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
@@ -228,3 +310,21 @@ class Network:
         if ax is None:
             plt.show()
         return fig, ax
+
+    def plot_gain(self, weights=None, **kwargs):
+        """Plot the beam pattern of the controlled nodes."""
+        num_plots = len(self.target_nodes)
+        num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
+        num_rows = np.ceil(num_plots / num_cols).astype(int)
+        fig, axes = plt.subplots(
+            num_rows, num_cols, figsize=(5 * num_cols, 5 * num_rows), **kwargs
+        )
+        for i, (node, ax) in enumerate(zip(self.target_nodes, np.ravel(axes))):
+            if weights is not None:
+                node.plot_gain(ax=ax, weights=weights[i])
+            else:
+                node.plot_gain(ax=ax)
+            title = ax.get_title()
+            ax.set_title(f"{node.name}: {title}")
+        plt.tight_layout()
+        plt.show()

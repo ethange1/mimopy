@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import gymnasium as gym
 
 from ..antenna_array import AntennaArray
-from ..channel import *
+from ..channels import *
 from ..network import Network
 
 

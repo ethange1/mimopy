@@ -13,6 +13,7 @@ dependencies = [
 project.optional-dependencies = [
     "torch",
     "gymnasium",
+    "pettingzoo",
 ]
 authors=[
     {name="Samuel Li", email="hcsamuel.li@gmail.com"},
