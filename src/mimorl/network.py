@@ -182,6 +182,8 @@ class Network:
     def bf_gain(self, link: Channel, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         return link.bf_gain_lin if linear else link.bf_gain
+    
+    gain = bf_gain
 
     def signal_power(self, link: Channel, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
