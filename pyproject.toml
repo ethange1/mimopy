@@ -3,17 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mimorl"
+name = "mimopy"
 version = "0.1.0"
-description = "A Python library for MIMO systems with RL integration"
+description = "A Python library for MIMO systems"
 dependencies = [
     "numpy",
     "matplotlib",
-]
-project.optional-dependencies = [
-    "torch",
-    "gymnasium",
-    "pettingzoo",
 ]
 authors=[
     {name="Samuel Li", email="hcsamuel.li@gmail.com"},
