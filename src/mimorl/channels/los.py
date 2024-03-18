@@ -13,8 +13,8 @@ class LosChannel(Channel):
         calculated based on the relative position of the transmitter and receiver.
     """
 
-    def __init__(self, tx, rx, normalize_channel_energy=True, *args, **kwargs):
-        super().__init__(tx=tx, rx=rx, *args, **kwargs)
+    def __init__(self, tx, rx, name=None, normalize_channel_energy=True, *args, **kwargs):
+        super().__init__(tx=tx, rx=rx, name=name, *args, **kwargs)
         self.normalize_channel_energy = normalize_channel_energy
         self._az = None
         self._el = None

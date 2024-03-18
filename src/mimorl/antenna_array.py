@@ -39,11 +39,11 @@ class AntennaArray:
 
     def __len__(self):
         return self.num_antennas
-    
+
     @property
     def amp(self):
         return np.abs(self.weights)
-    
+
     @property
     def phase(self):
         return np.angle(self.weights)
@@ -523,9 +523,7 @@ class AntennaArray:
         array_response = np.exp(-1j * phase_shift)
         return np.squeeze(array_response)
 
-    def get_array_gain(
-        self, az, el, db=True, use_deg=True, nearfield=False, origin=[0, 1, 0]
-    ):
+    def get_array_gain(self, az, el, db=True, use_deg=True):
         """Returns the array gain at a given azimuth and elevation in dB.
 
         Parameters
@@ -547,10 +545,7 @@ class AntennaArray:
             az = az * np.pi / 180
             el = el * np.pi / 180
 
-        if nearfield:
-            array_response = self.get_array_response_nearfield(origin, az, el)
-        else:
-            array_response = self.get_array_response(az, el)
+        array_response = self.get_array_response(az, el)
         # multiply gain by the weights at the last dimension
         gain = (array_response @ self.weights.conj().reshape(-1, 1)) ** 2
         gain = np.squeeze(gain)
