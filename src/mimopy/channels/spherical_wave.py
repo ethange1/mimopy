@@ -5,7 +5,7 @@ from .awgn import Channel
 class SphericalWave(Channel):
     """Spherical wave channel."""
 
-    def __init__(self, tx, rx, name, **kwargs):
+    def __init__(self, tx, rx, name="SphericalWave", **kwargs):
         super().__init__(tx, rx, name, **kwargs)
 
     def realize(self):

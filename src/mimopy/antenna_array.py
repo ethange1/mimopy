@@ -479,44 +479,12 @@ class AntennaArray:
                 + dz * np.sin(el)
             )
         )
-        return np.squeeze(array_response)
+        array_response = np.squeeze(array_response)
+        if self.num_antennas == 1:
+            array_response = array_response.reshape(-1, 1)
+        return array_response
 
-    def get_array_response_nearfield(self, az=0, el=0, d=1):
-        """Returns the near field array response vector at a given azimuth and elevation.
-
-        Parameters
-        ----------
-        az : float, array_like
-            Azimuth angle in radians.
-        el : float, array_like
-            Elevation angle in radians.
-        d : float, optional
-            Distance from the array center
-        """
-
-        az = az * np.pi / 180
-        el = el * np.pi / 180
-        origin_x = d * np.sin(az) * np.cos(el)
-        origin_y = d * np.cos(az) * np.cos(el)
-        origin_z = d * np.sin(el)
-
-        dx = self.coordinates[:, 0] - origin_x
-        dy = self.coordinates[:, 1] - origin_y
-        dz = self.coordinates[:, 2] - origin_z
-
-        dx = np.expand_dims(dx, (0, 1))
-        dy = np.expand_dims(dy, (0, 1))
-        dz = np.expand_dims(dz, (0, 1))
-        d = np.sqrt(dx**2 + dy**2 + dz**2)
-
-        az = np.expand_dims(np.asarray(az).flatten(), (1, 2))
-        el = np.expand_dims(np.asarray(el).flatten(), (0, 2))
-
-        phase_shift = (2 * np.pi * d) % (2 * np.pi)
-        phase_shift = phase_shift - phase_shift[0, 0]
-        array_response = np.exp(-1j * phase_shift)
-        return np.squeeze(array_response)
-
+    
     def get_array_gain(self, az, el, db=True, use_deg=True):
         """Returns the array gain at a given azimuth and elevation in dB.
 
@@ -542,7 +510,7 @@ class AntennaArray:
         array_response = self.get_array_response(az, el)
         # multiply gain by the weights at the last dimension
         gain = (array_response @ self.weights.conj().reshape(-1, 1)) ** 2
-        gain = np.squeeze(gain)
+        gain = np.asarray(np.squeeze(gain))
         mag = np.abs(gain)
         phase = np.angle(gain)
         # print(gain)
@@ -552,7 +520,7 @@ class AntennaArray:
 
     get_gain = get_array_gain
 
-    def get_conjugate_beamformer(self, az=0, el=0):
+    def conjugate_beamformer(self, az=0, el=0):
         """Returns the conjugate beamformer at a given azimuth and elevation.
 
         Parameters
@@ -583,6 +551,8 @@ class AntennaArray:
         az = np.linspace(-range / 2, range / 2, num_points) * np.pi / 180
         return self.get_array_response(az, el)
 
+    array_pattern_azimuth = get_array_pattern_azimuth
+
     ############################
     # Plotting
     ############################
@@ -597,15 +567,13 @@ class AntennaArray:
 
     def plot_gain(
         self,
+        polar=False,
         cut=0,
-        angles=np.linspace(-89, 89, 178),
+        angles=np.linspace(-89, 89, 356),
         cut_along="el",
         weights=None,
-        polar=False,
         db=True,
         ax=None,
-        nearfield=False,
-        nearfield_origin=[0, 1, 0],
         **kwargs,
     ):
         """Plot the array pattern at a given elevation or azimuth.
@@ -649,11 +617,9 @@ class AntennaArray:
             el = np.asarray(angles) * np.pi / 180
         else:
             raise ValueError("cut_along must be 'el' or 'az'")
+
         # vectorized version
-        if nearfield:
-            array_response = self.get_array_response_nearfield(nearfield_origin, az, el)
-        else:
-            array_response = self.get_array_gain(az, el, db=db, use_deg=False)
+        gain = self.get_array_gain(az, el, db=db, use_deg=False)
 
         if ax == None:
             if polar:
@@ -661,7 +627,7 @@ class AntennaArray:
             else:
                 fig, ax = plt.subplots(**kwargs)
         if polar:
-            ax.plot(angles * np.pi / 180, array_response)
+            ax.plot(angles * np.pi / 180, gain)
             ax.set_theta_zero_location("N")
             # ax.set_theta_direction(-1)
             ax.set_rlabel_position(-90)
@@ -674,12 +640,12 @@ class AntennaArray:
             ax.set_xlabel("Azimuth (deg)")
             ax.set_theta_direction(-1)
         else:
-            ax.plot(angles, array_response)
+            ax.plot(angles, gain)
             # ax.set_ylim(-(max(array_response)), max(array_response) + 10)
             ax.set_xlabel("Azimuth (deg)")
             ax.set_ylabel("Gain (dB)")
         cut_name = "Elevation" if cut_along == "el" else "Azimuth"
-        title = f"{cut_name} = {cut} deg, Max Gain = {np.max(np.real(array_response)):.2f} dB"
+        title = f"{cut_name} = {cut} deg, Max Gain = {np.max(np.real(gain)):.2f} dB"
         ax.set_title(title)
         ax.grid(True)
         if weights is not None:

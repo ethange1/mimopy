@@ -299,7 +299,6 @@ class Network:
         plt.title(f"{self.name}")
         if ax is None:
             plt.show()
-        return fig, ax
 
     def plot_3d(self, ax=None, labels=False, **kwargs):
         """Plot the network in 3D."""
@@ -336,7 +335,7 @@ class Network:
             plt.show()
         return fig, ax
 
-    def plot_gain(self, weights=None, polar=False,**kwargs):
+    def plot_gain(self, polar=False, weights=None, **kwargs):
         """Plot the beam pattern of the controlled nodes."""
         num_plots = len(self.target_nodes)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
