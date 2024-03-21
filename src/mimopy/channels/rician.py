@@ -23,7 +23,7 @@ class Rician(Channel):
                 self.los = LoS(tx=self.tx, rx=self.rx).realize()
         else:
             self.los = los
-        self.K = K
+        self.K = 10 ** (K / 10) # Convert K-factor to linear scale
         self.H_nlos = None
 
     def realize(self, seed=None):

@@ -230,7 +230,7 @@ class AntennaArray:
         if LA.norm(self.weights) != 0:
             self.weights /= LA.norm(self.weights)
 
-    def set_weights(self, weights, index=None, normalize=True):
+    def set_weights(self, weights, normalize=True):
         """Set the weights of the antennas.
 
         Parameters
@@ -245,17 +245,16 @@ class AntennaArray:
         normalize : bool, optional
             If True, the weights are normalized to have unit norm. Default is True.
         """
-        if index is None:
-            if np.isscalar(weights):
-                self.weights = weights * np.ones(self.num_antennas)
-            elif len(weights) != self.num_antennas:
+
+        if np.isscalar(weights):
+            self.weights = weights * np.ones(self.num_antennas)
+        else:
+            weights = np.asarray(weights).reshape(-1)
+            if len(weights) != self.num_antennas:
                 raise ValueError(
                     "The length of weights must match the number of antennas"
                 )
-            else:
-                self.weights = np.asarray(weights).reshape(-1)
-        else:
-            self.weights[index] = weights.reshape(-1)
+            self.weights = np.asarray(weights).reshape(-1)
         if normalize:
             self.normalize_weights()
 
@@ -475,8 +474,8 @@ class AntennaArray:
             * 2
             * np.pi
             * (
-                dx * np.cos(az) * np.cos(el)
-                + dy * np.sin(az) * np.cos(el)
+                dx * np.sin(az) * np.cos(el)
+                + dy * np.cos(az) * np.cos(el)
                 + dz * np.sin(el)
             )
         )
@@ -550,7 +549,7 @@ class AntennaArray:
         if db:
             return 10 * log10(mag + np.finfo(float).tiny)
         return mag
-    
+
     get_gain = get_array_gain
 
     def get_conjugate_beamformer(self, az=0, el=0):

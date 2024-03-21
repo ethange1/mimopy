@@ -48,10 +48,8 @@ class LoS(Channel):
             el = el_new if el is None else el
         self._az = az
         self._el = el
-        tx_response = self.tx.get_array_response(self._az, self._el).reshape(-1, 1)
-        rx_response = self.rx.get_array_response(
-            self._az + np.pi, self._el + np.pi
-        ).reshape(-1, 1)
+        tx_response = self.tx.get_array_response(self._az, self._el)
+        rx_response = self.rx.get_array_response(self._az + np.pi, self._el + np.pi)
         # H = np.outer(tx_response, rx_response).T
         H = np.outer(rx_response, tx_response.conj())
         self.channel_matrix = H
