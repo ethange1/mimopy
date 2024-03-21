@@ -5,8 +5,8 @@ from .awgn import Channel
 class SphericalWave(Channel):
     """Spherical wave channel."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, tx, rx, name, **kwargs):
+        super().__init__(tx, rx, name, **kwargs)
 
     def realize(self):
         """Realize the channel."""
@@ -20,5 +20,5 @@ class SphericalWave(Channel):
         d = np.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
         # get relative phase shift
         phase_shift = 2 * np.pi * d
-        self.channel_matrix = np.exp(1j * phase_shift)
+        self.channel_matrix = np.exp(1j * phase_shift).T.conj()
         return self

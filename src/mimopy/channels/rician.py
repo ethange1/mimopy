@@ -1,6 +1,7 @@
 import numpy as np
 from .awgn import Channel
 from .los import LoS
+from .spherical_wave import SphericalWave
 
 
 class Rician(Channel):
@@ -13,10 +14,13 @@ class Rician(Channel):
         H_nlos (np.ndarray): Non-line-of-sight channel matrix.
     """
 
-    def __init__(self, tx, rx, K=10, los=None, *args, **kwargs):
+    def __init__(self, tx, rx, K=10, nearfield=False, los=None, *args, **kwargs):
         super().__init__(tx=tx, rx=rx, *args, **kwargs)
         if los is None:
-            self.los = LoS(tx=self.tx, rx=self.rx).realize()
+            if nearfield:
+                self.los = SphericalWave(tx=self.tx, rx=self.rx).realize()
+            else:
+                self.los = LoS(tx=self.tx, rx=self.rx).realize()
         else:
             self.los = los
         self.K = K
@@ -29,8 +33,7 @@ class Rician(Channel):
         # print("Generating random NLOS channel matrix.")
         np.random.seed(seed)
         self.H_nlos = np.sqrt(1 / 2) * (
-            np.random.randn(*self.H_los.shape)
-            + 1j * np.random.randn(*self.H_los.shape)
+            np.random.randn(*self.H_los.shape) + 1j * np.random.randn(*self.H_los.shape)
         )
         self.channel_matrix = (
             np.sqrt(self.K / (self.K + 1)) * self.H_los

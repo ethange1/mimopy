@@ -13,7 +13,9 @@ class LoS(Channel):
         calculated based on the relative position of the transmitter and receiver.
     """
 
-    def __init__(self, tx, rx, name=None, normalize_channel_energy=True, *args, **kwargs):
+    def __init__(
+        self, tx, rx, name=None, normalize_channel_energy=True, *args, **kwargs
+    ):
         super().__init__(tx=tx, rx=rx, name=name, *args, **kwargs)
         self.normalize_channel_energy = normalize_channel_energy
         self._az = None
@@ -46,10 +48,11 @@ class LoS(Channel):
             el = el_new if el is None else el
         self._az = az
         self._el = el
-        tx_response = self.tx.get_array_response(self._az, self._el)
-        rx_response = self.rx.get_array_response(self._az + np.pi, self._el + np.pi)
+        tx_response = self.tx.get_array_response(self._az, self._el).reshape(-1, 1)
+        rx_response = self.rx.get_array_response(
+            self._az + np.pi, self._el + np.pi
+        ).reshape(-1, 1)
         # H = np.outer(tx_response, rx_response).T
         H = np.outer(rx_response, tx_response.conj())
         self.channel_matrix = H
         return self
-

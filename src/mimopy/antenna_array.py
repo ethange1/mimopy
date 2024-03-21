@@ -475,8 +475,8 @@ class AntennaArray:
             * 2
             * np.pi
             * (
-                dx * np.sin(az) * np.cos(el)
-                + dy * np.cos(az) * np.cos(el)
+                dx * np.cos(az) * np.cos(el)
+                + dy * np.sin(az) * np.cos(el)
                 + dz * np.sin(el)
             )
         )
@@ -550,6 +550,8 @@ class AntennaArray:
         if db:
             return 10 * log10(mag + np.finfo(float).tiny)
         return mag
+    
+    get_gain = get_array_gain
 
     def get_conjugate_beamformer(self, az=0, el=0):
         """Returns the conjugate beamformer at a given azimuth and elevation.
