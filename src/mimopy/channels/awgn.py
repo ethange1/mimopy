@@ -110,6 +110,9 @@ class Channel:
     def bf_gain(self) -> float:
         """Beamforming gain in dB."""
         return 10 * log10(self.bf_gain_lin + np.finfo(float).tiny)
+    
+    gain_lin = bf_gain_lin
+    gain = bf_gain    
 
     @property
     def signal_power_lin(self) -> float:

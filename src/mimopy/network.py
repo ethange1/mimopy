@@ -18,13 +18,15 @@ class Network:
         name (str): Network name.
         links (list): List of links in the network.
         nodes (tuple): Tuple of nodes in the network.
-        nodes_dict (dict): Dictionary of nodes in the network.
+        connections (dict): Dictionary of connections in the network.
+        target_links (list): List of target links in the network.
+        target_nodes (list): List of target nodes in the network.
     """
 
     def __init__(self, name="Network", *args, **kwargs):
         self.name = name
-        self.links = []
-        self.nodes_dict = dict()
+        self.links = {}
+        self.connections = {}
         self.target_links = []
         self.target_nodes = []
 
@@ -40,7 +42,7 @@ class Network:
 
     @property
     def nodes(self: Iterable[AntennaArray]):
-        return tuple(self.nodes_dict.keys())
+        return {key.name: key for key in self.connections.keys()}
 
     @nodes.setter
     def nodes(self, _):
@@ -48,9 +50,8 @@ class Network:
 
     def _add_node(self, node: AntennaArray):
         """Add a node to the network."""
-        if node not in self.nodes_dict:
-            node.name = f"{len(self.nodes_dict)}_" + node.name
-            self.nodes_dict[node] = {"dl": [], "ul": []}
+        if node not in self.connections:
+            self.connections[node] = {"dl": [], "ul": []}
 
     def add_nodes(self, nodes: Iterable[AntennaArray]):
         """Add nodes to the network."""
@@ -62,12 +63,13 @@ class Network:
 
     def _add_link(self, link: Channel):
         """Add a link to the network."""
-        link.name = f"{len(self.links)}_" + link.name
-        self.links.append(link)
-        self.add_nodes(link.tx)
-        self.nodes_dict[link.tx]["dl"].append((link.rx, link))
-        self.add_nodes(link.rx)
-        self.nodes_dict[link.rx]["ul"].append((link.tx, link))
+        # link.name = f"{len(self.links)}_" + link.name
+        if link.name not in self.links and link not in self.links.values():
+            self.links[link.name] = link
+            self.add_nodes(link.tx)
+            self.connections[link.tx]["dl"].append((link.rx, link))
+            self.add_nodes(link.rx)
+            self.connections[link.rx]["ul"].append((link.tx, link))
 
     def add_links(self, links: Iterable[Channel]):
         """Add links to the network."""
@@ -79,15 +81,15 @@ class Network:
 
     def _remove_node(self, node: AntennaArray):
         """Remove a node and all links associated with it from the network."""
-        if node in self.nodes_dict:
-            for _, link in self.nodes_dict[node]["dl"]:
+        if node in self.connections:
+            for _, link in self.connections[node]["dl"]:
                 # the node is the tx; remove ul from link.rx
                 self.links.remove(link)
-                self.nodes_dict[link.rx]["ul"].remove((node, link))
-            for _, link in self.nodes_dict[node]["ul"]:
+                self.connections[link.rx]["ul"].remove((node, link))
+            for _, link in self.connections[node]["ul"]:
                 # the node is the rx; remove dl from link.tx
                 self.links.remove(link)
-                self.nodes_dict[link.tx]["dl"].remove((node, link))
+                self.connections[link.tx]["dl"].remove((node, link))
 
     def remove_nodes(self, nodes):
         """Remove nodes from the network."""
@@ -100,8 +102,8 @@ class Network:
     def _remove_link(self, link: Channel):
         """Remove a link from the network."""
         self.links.remove(link)
-        self.nodes_dict[link.tx]["dl"].remove((link.rx, link))
-        self.nodes_dict[link.rx]["ul"].remove((link.tx, link))
+        self.connections[link.tx]["dl"].remove((link.rx, link))
+        self.connections[link.rx]["ul"].remove((link.tx, link))
 
     def remove_links(self, links):
         """Remove links from the network."""
@@ -182,7 +184,7 @@ class Network:
     def bf_gain(self, link: Channel, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         return link.bf_gain_lin if linear else link.bf_gain
-    
+
     gain = bf_gain
 
     def signal_power(self, link: Channel, linear=False) -> float:
@@ -200,11 +202,18 @@ class Network:
     # ===================================================================
     # Network measurement methods
     # ===================================================================
-    def interference(self, link, linear=False) -> float:
+    def interference(self, link=None, linear=False) -> float:
         """Get the interference of the link."""
         # interference is the sum of bf gains of all other ul links of the rx
+        if link is None:
+            return {
+                link: self.interference(link, linear=linear)
+                for link in self.links.values()
+            }
+        if isinstance(link, str):
+            link = self.links[link]
         interference_lin = 0
-        for _, l in self.nodes_dict[link.rx]["ul"]:
+        for _, l in self.connections[link.rx]["ul"]:
             if l != link:
                 interference_lin += self.signal_power(l, linear=True)
         return (
@@ -213,40 +222,54 @@ class Network:
             else 10 * log10(interference_lin + np.finfo(float).tiny)
         )
 
-    def inr(self, link, linear=False) -> float:
+    def inr(self, link=None, linear=False) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
+        if link is None:
+            return {link: self.inr(link, linear=linear) for link in self.links.values()}
+        if isinstance(link, str):
+            link = self.links[link]
         inr_lin = self.interference(link, linear=True) / self.bf_noise_power(
             link, linear=True
         )
         return inr_lin if linear else 10 * log10(inr_lin + np.finfo(float).tiny)
 
-    def sinr(self, link, linear=False) -> float:
+    def sinr(self, link=None, linear=False) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
+        if link is None:
+            return {
+                link: self.sinr(link, linear=linear) for link in self.links.values()
+            }
+        if isinstance(link, str):
+            link = self.links[link]
         sinr_lin = self.signal_power(link, linear=True) / (
             self.interference(link, linear=True)
             + self.bf_noise_power(link, linear=True)
         )
         return sinr_lin if linear else 10 * log10(sinr_lin + np.finfo(float).tiny)
 
-    def spectral_efﬁciency(self, link) -> float:
+    def spectral_efﬁciency(self, link=None) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
+        if link is None:
+            return {link: self.spectral_efﬁciency(link) for link in self.links.values()}
+        if isinstance(link, str):
+            link = self.links[link]
         return float(log10(1 + 10 ** (self.sinr(link) / 10)))
 
     # ===================================================================
     # Plotting methods
     # ===================================================================
-    def plot(self, plane="xy", show_label=False, ax=None, **kwargs):
+    def plot(self, labels=False, plane="xy", ax=None, **kwargs):
         """Plot the network."""
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
         if ax is None:
             fig, ax = plt.subplots(**kwargs)
-        for node, value in self.nodes_dict.items():
+        for node, value in self.connections.items():
             # plot nodes
             node_loc = node.location[coord_idx]
             # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
             style = "b" if self.is_target(node) else "k"
             ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
-            if show_label:
+            if labels:
                 ax.annotate(
                     node.name,
                     node_loc[coord_idx],
@@ -264,7 +287,7 @@ class Network:
                     "m*",
                     label=dl.name,
                 )
-                if show_label:
+                if labels:
                     offset = np.random.uniform(dl_loc - node_loc) * 0.1
                     ax.annotate(
                         link.name,
@@ -278,16 +301,16 @@ class Network:
             plt.show()
         return fig, ax
 
-    def plot_3d(self, ax=None, show_label=False, **kwargs):
+    def plot_3d(self, ax=None, labels=False, **kwargs):
         """Plot the network in 3D."""
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, **kwargs)
-        for node, value in self.nodes_dict.items():
+        for node, value in self.connections.items():
             # plot nodes
             node_loc = node.location
             style = "b" if self.is_target(node) else "k"
             ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
-            if show_label:
+            if labels:
                 ax.text(*node_loc, node.name)
             # plot downlink
             for dl, link in value["dl"]:
@@ -302,7 +325,7 @@ class Network:
                     "m*",
                     label=dl.name,
                 )
-                if show_label:
+                if labels:
                     ax.text(*(dl_loc + node_loc) / 2, link.name)
         ax.set_xlabel("X-axis")
         ax.set_ylabel("Y-axis")
@@ -313,19 +336,19 @@ class Network:
             plt.show()
         return fig, ax
 
-    def plot_gain(self, weights=None, **kwargs):
+    def plot_gain(self, weights=None, polar=False,**kwargs):
         """Plot the beam pattern of the controlled nodes."""
         num_plots = len(self.target_nodes)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
         num_rows = np.ceil(num_plots / num_cols).astype(int)
-        fig, axes = plt.subplots(
-            num_rows, num_cols, figsize=(5 * num_cols, 5 * num_rows), **kwargs
-        )
+        if "figsize" not in kwargs:
+            kwargs["figsize"] = (5 * num_cols, 5 * num_rows)
+        fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
         for i, (node, ax) in enumerate(zip(self.target_nodes, np.ravel(axes))):
             if weights is not None:
-                node.plot_gain(ax=ax, weights=weights[i])
+                node.plot_gain(ax=ax, weights=weights[i], polar=polar)
             else:
-                node.plot_gain(ax=ax)
+                node.plot_gain(ax=ax, polar=polar)
             title = ax.get_title()
             ax.set_title(f"{node.name}: {title}")
         plt.tight_layout()

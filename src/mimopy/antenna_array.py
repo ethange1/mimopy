@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import numpy as np
 import numpy.linalg as LA
 from numpy import log10, log2
@@ -81,9 +83,9 @@ class AntennaArray:
     @classmethod
     def initialize_ula(
         cls,
-        num_antennas,
-        ax="x",
+        N,
         array_center=[0, 0, 0],
+        ax="x",
         spacing=0.5,
         normalize=True,
         **kwargs,
@@ -93,7 +95,7 @@ class AntennaArray:
 
         Parameters
         ----------
-        num_antennas : int
+        N : int
             Number of antennas in the array.
         ax : char, optional
             Axis along which the array is to be created.
@@ -106,34 +108,28 @@ class AntennaArray:
             If True, the weights are normalized to have unit norm. Default is True.
         """
         if ax == "x":
-            coordinates = np.array(
-                [
-                    np.arange(num_antennas),
-                    np.zeros(num_antennas),
-                    np.zeros(num_antennas),
-                ]
-            ).T
+            coordinates = np.array([np.arange(N), np.zeros(N), np.zeros(N)]).T
         elif ax == "y":
             coordinates = np.array(
                 [
-                    np.zeros(num_antennas),
-                    np.arange(num_antennas),
-                    np.zeros(num_antennas),
+                    np.zeros(N),
+                    np.arange(N),
+                    np.zeros(N),
                 ]
             ).T
         elif ax == "z":
             coordinates = np.array(
                 [
-                    np.zeros(num_antennas),
-                    np.zeros(num_antennas),
-                    np.arange(num_antennas),
+                    np.zeros(N),
+                    np.zeros(N),
+                    np.arange(N),
                 ]
             ).T
         else:
             raise ValueError("ax must be 'x', 'y' or 'z'")
         # coordinates = cls._translate_coordinates(coordinates)
         # coordinates = cls._translate_coordinates(coordinates, array_center)
-        ula = cls(num_antennas, coordinates * spacing)
+        ula = cls(N, coordinates * spacing)
         ula.array_center = array_center
         for kwarg in kwargs:
             ula.__setattr__(kwarg, kwargs[kwarg])
@@ -146,10 +142,9 @@ class AntennaArray:
     @classmethod
     def initialize_upa(
         cls,
-        num_rows,
-        num_cols,
-        plane="xy",
+        N: Iterable,
         array_center=(0, 0, 0),
+        plane="xy",
         spacing=0.5,
         normalize=True,
     ):
@@ -158,10 +153,8 @@ class AntennaArray:
 
         Parameters
         ----------
-        num_rows : int
-            Number of rows in the array. (along the first axis)
-        num_col : int
-            Number of columns in the array.(along the second axis)
+        N : Iterable
+            Number of rows and columns in the array.
         plane : str, optional
             Plane in which the array is to be created or the axis orthogonal to the plane.
             Takes value 'xy', 'yz' or 'xz'. Default is 'xy'.
@@ -170,6 +163,8 @@ class AntennaArray:
         normalize : bool, optional
             If True, the weights are normalized to have unit norm. Default is True.
         """
+        num_rows = N[0]
+        num_cols = N[1]
 
         if plane == "xy":
             coordinates = np.array(
@@ -556,7 +551,7 @@ class AntennaArray:
             return 10 * log10(mag + np.finfo(float).tiny)
         return mag
 
-    def get_conjugate_beamformer(self, az, el):
+    def get_conjugate_beamformer(self, az=0, el=0):
         """Returns the conjugate beamformer at a given azimuth and elevation.
 
         Parameters

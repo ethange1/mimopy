@@ -1,3 +1,4 @@
+import numpy as np
 from .awgn import Channel
 
 
@@ -9,8 +10,8 @@ class SphericalWave(Channel):
 
     def realize(self):
         """Realize the channel."""
-        tc = tx.coordinates
-        rc = rx.coordinates
+        tc = self.tx.coordinates
+        rc = self.rx.coordinates
 
         dx = tc[:, 0].reshape(-1, 1) - rc[:, 0].reshape(1, -1)
         dy = tc[:, 1].reshape(-1, 1) - rc[:, 1].reshape(1, -1)

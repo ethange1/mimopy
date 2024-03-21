@@ -1,9 +1,9 @@
 import numpy as np
 from .awgn import Channel
-from .los import LosChannel
+from .los import LoS
 
 
-class RicianChannel(Channel):
+class Rician(Channel):
     """Rician channel class.
 
     Unique Attributes
@@ -16,7 +16,7 @@ class RicianChannel(Channel):
     def __init__(self, tx, rx, K=10, los=None, *args, **kwargs):
         super().__init__(tx=tx, rx=rx, *args, **kwargs)
         if los is None:
-            self.los = LosChannel(tx=self.tx, rx=self.rx).realize()
+            self.los = LoS(tx=self.tx, rx=self.rx).realize()
         else:
             self.los = los
         self.K = K

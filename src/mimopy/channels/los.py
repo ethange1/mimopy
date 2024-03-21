@@ -3,7 +3,7 @@ import numpy as np
 from numpy import log10
 
 
-class LosChannel(Channel):
+class LoS(Channel):
     """Line-of-sight channel class.
 
     Unique Attributes
