@@ -11,7 +11,7 @@ dependencies = [
     "matplotlib",
 ]
 authors=[
-    {name="Samuel Li", email="hcsamuel.li@gmail.com"},
+    {name="Samuel Li", email="samuel.li@ucla.edu"},
 ]
 readme = "README.md"
 classifiers = [
