@@ -57,6 +57,13 @@ class Channel:
     def dl(self, rx):
         self.rx = rx
 
+    @property
+    def nodes(self):
+        return [self.tx, self.rx]
+
+    def has_node(self, node):
+        return node == self.tx or node == self.rx
+
     # ========================================================
     # Channel matrix
     # ========================================================
@@ -97,37 +104,9 @@ class Channel:
         self.noise_power = 10 * log10(noise_power_lin + np.finfo(float).tiny)
 
     @property
-    def bf_gain_lin(self) -> float:
-        """Beamforming gain in linear scale. Note that the transmit weights are
-        normalized to have unit norm."""
-        f = self.tx.weights.reshape(-1, 1)
-        f = f / LA.norm(f)
-        H = self.channel_matrix
-        w = self.rx.weights.reshape(-1, 1)
-        return float(np.abs(w.T @ H @ f) ** 2)  # TODO: standardize this
-
-    @property
-    def bf_gain(self) -> float:
-        """Beamforming gain in dB."""
-        return 10 * log10(self.bf_gain_lin + np.finfo(float).tiny)
-    
-    gain_lin = bf_gain_lin
-    gain = bf_gain    
-
-    @property
-    def signal_power_lin(self) -> float:
-        """Signal power after beamforming in linear scale."""
-        return self.tx.power * self.bf_gain_lin
-
-    @property
-    def signal_power(self) -> float:
-        """Signal power after beamforming in dBm."""
-        return 10 * log10(self.signal_power_lin + np.finfo(float).tiny)
-
-    @property
     def bf_noise_power_lin(self):
-        """Noise power after beamforming in linear scale."""
-        w = self.rx.weights.reshape(1, -1)
+        """Noise power after beamforming combining in linear scale."""
+        w = self.rx.weights.flatten()
         return float(LA.norm(w) ** 2 * self.noise_power_lin)
 
     @property
@@ -136,9 +115,35 @@ class Channel:
         return 10 * log10(self.bf_noise_power_lin + np.finfo(float).tiny)
 
     @property
+    def bf_gain_lin(self) -> float:
+        """Normalized beamforming gain |wHf|^2 / Nt in linear scale."""
+        f = self.tx.weights.reshape(-1, 1)
+        H = self.channel_matrix
+        w = self.rx.weights.reshape(-1, 1)
+        return float(np.abs(w.T @ H @ f) ** 2 / self.tx.Nt)
+
+    @property
+    def bf_gain(self) -> float:
+        """Normalized beamforming gain |wHf|^2 / Nt in dB."""
+        return 10 * log10(self.bf_gain_lin + np.finfo(float).tiny)
+
+    gain_lin = bf_gain_lin
+    gain = bf_gain
+
+    @property
+    def signal_power_lin(self) -> float:
+        """Signal power after beamforming in linear scale."""
+        return self.tx.power * self.bf_gain_lin
+
+    @property
+    def signal_power(self) -> float:
+        """Normalized signal power after beamforming in dBm."""
+        return 10 * log10(self.signal_power_lin + np.finfo(float).tiny)
+
+    @property
     def snr_lin(self) -> float:
         """Signal-to-noise ratio (SNR) in linear scale."""
-        return float(self.signal_power_lin / self.bf_noise_power_lin)
+        return float(self.tx.power * self.bf_gain_lin / self.bf_noise_power_lin)
 
     @property
     def snr(self) -> float:

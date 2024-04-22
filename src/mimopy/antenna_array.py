@@ -87,7 +87,6 @@ class AntennaArray:
         array_center=[0, 0, 0],
         ax="x",
         spacing=0.5,
-        normalize=True,
         **kwargs,
     ):
         """Empties the array and creates a half-wavelength spaced,
@@ -133,8 +132,6 @@ class AntennaArray:
         ula.array_center = array_center
         for kwarg in kwargs:
             ula.__setattr__(kwarg, kwargs[kwarg])
-        if normalize:
-            ula.normalize_weights()
         return ula
 
     ula = initialize_ula
@@ -146,7 +143,6 @@ class AntennaArray:
         array_center=(0, 0, 0),
         plane="xy",
         spacing=0.5,
-        normalize=True,
     ):
         """Empties the array and creates a half-wavelength spaced,
         uniform plannar array in the desired plane.
@@ -194,8 +190,6 @@ class AntennaArray:
             raise ValueError("plane must be 'xy', 'yz' or 'xz'")
         upa = cls(num_rows * num_cols, coordinates * spacing)
         upa.array_center = array_center
-        if normalize:
-            upa.normalize_weights()
         return upa
 
     upa = initialize_upa
@@ -225,12 +219,12 @@ class AntennaArray:
         """reset weights to 1"""
         self.weights = np.ones(self.num_antennas)
 
-    def normalize_weights(self):
+    def normalize_weights(self, norm=1):
         """Normalize the weights of the antennas to have unit norm."""
         if LA.norm(self.weights) != 0:
-            self.weights /= LA.norm(self.weights)
+            self.weights = self.weights * norm / LA.norm(self.weights)
 
-    def set_weights(self, weights, normalize=True):
+    def set_weights(self, weights):
         """Set the weights of the antennas.
 
         Parameters
@@ -255,8 +249,6 @@ class AntennaArray:
                     "The length of weights must match the number of antennas"
                 )
             self.weights = np.asarray(weights).reshape(-1)
-        if normalize:
-            self.normalize_weights()
 
     def get_weights(self, coordinates=None):
         """Get the weights of the antennas.
@@ -484,7 +476,6 @@ class AntennaArray:
             array_response = array_response.reshape(-1, 1)
         return array_response
 
-    
     def get_array_gain(self, az, el, db=True, use_deg=True):
         """Returns the array gain at a given azimuth and elevation in dB.
 
