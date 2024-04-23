@@ -8,7 +8,7 @@ class SphericalWave(Channel):
     def __init__(self, tx, rx, name="SphericalWave", **kwargs):
         super().__init__(tx, rx, name, **kwargs)
 
-    def realize(self):
+    def realize(self, energy=None):
         """Realize the channel."""
         tc = self.tx.coordinates
         rc = self.rx.coordinates
@@ -21,4 +21,7 @@ class SphericalWave(Channel):
         # get relative phase shift
         phase_shift = 2 * np.pi * d
         self.channel_matrix = np.exp(1j * phase_shift).T.conj()
+        if energy is None:
+            energy = self.tx.N * self.rx.N
+        self.normalize_energy(energy)
         return self

@@ -31,7 +31,7 @@ class AntennaArray:
         self.spacing = 0.5
         self.frequency = 1e9
 
-    Nr = Nt = property(lambda self: self.num_antennas)
+    N = property(lambda self: self.num_antennas)
 
     def __str__(self):
         return self.name
