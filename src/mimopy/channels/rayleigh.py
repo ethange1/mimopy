@@ -15,14 +15,13 @@ class Rayleigh(Channel):
         super().__init__(tx=tx, rx=rx, *args, **kwargs)
 
     def realize(self, seed=None, energy=None):
-        """Realize the channel."""
+        """Realize the channel. Energy is set by adjusting the expectation of the channel"""
         shape = (self.rx.N, self.tx.N)
         if seed is not None:
             np.random.seed(self.seed)
-        self.channel_matrix = np.sqrt(1 / 2) * (
-            np.random.randn(*shape) + 1j * np.random.randn(*shape)
-        )
         if energy is None:
             energy = self.tx.N * self.rx.N
-        self.normalize_energy(energy)
+        self.channel_matrix = np.sqrt(energy / 2) * (
+            np.random.randn(*shape) + 1j * np.random.randn(*shape)
+        )
         return self
