@@ -18,7 +18,7 @@ class Rayleigh(Channel):
         """Realize the channel. Energy is set by adjusting the expectation of the channel"""
         shape = (self.rx.N, self.tx.N)
         if seed is not None:
-            np.random.seed(self.seed)
+            np.random.seed(seed)
         if energy is None:
             energy = self.tx.N * self.rx.N
         self.channel_matrix = np.sqrt(energy / 2) * (

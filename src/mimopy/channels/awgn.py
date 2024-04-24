@@ -28,7 +28,6 @@ class Channel:
         self.tx = tx
         self.rx = rx
         self.channel_matrix = None
-        self.noise_power = 0
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
@@ -91,18 +90,10 @@ class Channel:
     # ========================================================
 
     @property
-    def noise_power_lin(self):
-        return 10 ** (self.noise_power / 10)
-
-    @noise_power_lin.setter
-    def noise_power_lin(self, noise_power_lin):
-        self.noise_power = 10 * log10(noise_power_lin + np.finfo(float).tiny)
-
-    @property
     def bf_noise_power_lin(self):
         """Noise power after beamforming combining in linear scale."""
         w = self.rx.weights.flatten()
-        return float(LA.norm(w) ** 2 * self.noise_power_lin)
+        return float(LA.norm(w) ** 2 * self.rx.noise_power_lin)
 
     @property
     def bf_noise_power(self) -> float:
