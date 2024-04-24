@@ -600,15 +600,6 @@ class AntennaArray:
         if weights is not None:
             orig_weights = self.get_weights()
             self.set_weights(weights)
-        # az = (
-        #     np.linspace(az_center - az_range / 2, az_center + az_range / 2, num_points)
-        #     * np.pi
-        #     / 180
-        # )
-        # array_response = np.zeros(num_points)
-        # for i in range(num_points):
-        #     array_response[i] = self.get_array_gain(az[i], el * np.pi / 180, db=db)
-
         if cut_along == "el":
             el = np.asarray(cut) * np.pi / 180
             az = np.asarray(angles) * np.pi / 180
@@ -630,7 +621,7 @@ class AntennaArray:
             ax.plot(angles * np.pi / 180, gain)
             ax.set_theta_zero_location("N")
             # ax.set_theta_direction(-1)
-            ax.set_rlabel_position(-90)
+            # ax.set_rlabel_position(-90)
             # ax.set_rticks([-20, -10, 0])
             # ax.set_rlim(-20, 0)
             # limit theta range to 180

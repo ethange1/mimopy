@@ -181,22 +181,38 @@ class Network:
     # Link measurement methods wrapper
     # ===================================================================
 
-    def bf_gain(self, link: Channel, linear=False) -> float:
+    def bf_gain(self, link: Channel = None, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
+        if link is None:
+            return {
+                link: self.bf_gain(link, linear=linear) for link in self.links.values()
+            }
         return link.bf_gain_lin if linear else link.bf_gain
 
     gain = bf_gain
 
-    def signal_power(self, link: Channel, linear=False) -> float:
+    def signal_power(self, link: Channel = None, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
+        if link is None:
+            return {
+                link: self.signal_power(link, linear=linear)
+                for link in self.links.values()
+            }
         return link.signal_power_lin if linear else link.signal_power
 
-    def bf_noise_power(self, link: Channel, linear=False) -> float:
+    def bf_noise_power(self, link: Channel = None, linear=False) -> float:
         """Get the noise power after beamforming in dBm."""
+        if link is None:
+            return {
+                link: self.bf_noise_power(link, linear=linear)
+                for link in self.links.values()
+            }
         return link.bf_noise_power_lin if linear else link.bf_noise_power
 
-    def snr(self, link, linear=False) -> float:
+    def snr(self, link: Channel = None, linear=False) -> float:
         """Get the signal-to-noise ratio (SNR) of the link."""
+        if link is None:
+            return {link: self.snr(link, linear=linear) for link in self.links.values()}
         return link.snr_lin if linear else link.snr
 
     # ===================================================================
@@ -209,7 +225,7 @@ class Network:
             return {
                 link: self.interference(link, linear=linear)
                 for link in self.links.values()
-            }
+        }
         if isinstance(link, str):
             link = self.links[link]
         interference_lin = 0
@@ -342,7 +358,12 @@ class Network:
         num_rows = np.ceil(num_plots / num_cols).astype(int)
         if "figsize" not in kwargs:
             kwargs["figsize"] = (5 * num_cols, 5 * num_rows)
-        fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
+        if polar:
+            fig, axes = plt.subplots(
+                num_rows, num_cols, subplot_kw={"polar": True}, **kwargs
+            )
+        else:
+            fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
         for i, (node, ax) in enumerate(zip(self.target_nodes, np.ravel(axes))):
             if weights is not None:
                 node.plot_gain(ax=ax, weights=weights[i], polar=polar)
