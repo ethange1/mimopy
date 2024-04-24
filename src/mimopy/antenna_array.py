@@ -260,6 +260,7 @@ class AntennaArray:
                     "The length of weights must match the number of antennas"
                 )
             self.weights = np.asarray(weights).reshape(-1)
+        np.clip(self.weights, 0, 1, out=self.weights)
 
     def get_weights(self, coordinates=None):
         """Get the weights of the antennas.
