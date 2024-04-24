@@ -181,7 +181,7 @@ class Network:
     # Link measurement methods wrapper
     # ===================================================================
 
-    def bf_gain(self, link: Channel = None, linear=False) -> float:
+    def bf_gain(self, link: Channel | str = None, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         if link is None:
             return {
@@ -191,7 +191,7 @@ class Network:
 
     gain = bf_gain
 
-    def signal_power(self, link: Channel = None, linear=False) -> float:
+    def signal_power(self, link: Channel | str = None, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         if link is None:
             return {
@@ -200,7 +200,7 @@ class Network:
             }
         return link.signal_power_lin if linear else link.signal_power
 
-    def bf_noise_power(self, link: Channel = None, linear=False) -> float:
+    def bf_noise_power(self, link: Channel | str = None, linear=False) -> float:
         """Get the noise power after beamforming in dBm."""
         if link is None:
             return {
@@ -209,7 +209,7 @@ class Network:
             }
         return link.bf_noise_power_lin if linear else link.bf_noise_power
 
-    def snr(self, link: Channel = None, linear=False) -> float:
+    def snr(self, link: Channel | str = None, linear=False) -> float:
         """Get the signal-to-noise ratio (SNR) of the link."""
         if link is None:
             return {link: self.snr(link, linear=linear) for link in self.links.values()}

@@ -31,7 +31,7 @@ class LoS(Channel):
 
     aod = aoa
 
-    def realize(self, az=None, el=None):
+    def realize(self, energy=None, az=None, el=None):
         """Realize the channel.
 
         Parameters
@@ -51,6 +51,8 @@ class LoS(Channel):
         tx_response = self.tx.get_array_response(self._az, self._el)
         rx_response = self.rx.get_array_response(self._az + np.pi, self._el + np.pi)
         # H = np.outer(tx_response, rx_response).T
-        H = np.outer(rx_response, tx_response.conj())
-        self.channel_matrix = H
+        self.H = np.outer(rx_response, tx_response.conj())
+        if energy is None:
+            energy = self.tx.N * self.rx.N
+        self.normalize_energy(energy)
         return self
