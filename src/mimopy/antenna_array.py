@@ -21,15 +21,18 @@ class AntennaArray:
         unit weight.
     """
 
-    def __init__(self, num_antennas, coordinates=[0, 0, 0]):
-        self.num_antennas = num_antennas
+    def __init__(self, N, coordinates=[0, 0, 0], **kwargs):
+        self.num_antennas = N
         self.coordinates = np.array(coordinates)
-        self.weights = np.ones(num_antennas)
+        self.weights = np.ones(N)
         self.marker = "o"
         self.power = 1
+        self.noise_power = 0
         self.name = "AntennaArray"
         self.spacing = 0.5
         self.frequency = 1e9
+        for kwarg in kwargs:
+            self.__setattr__(kwarg, kwargs[kwarg])
 
     N = property(lambda self: self.num_antennas)
 
@@ -80,8 +83,16 @@ class AntennaArray:
         delta_location = location - self.location
         self.coordinates += delta_location
 
+    @property
+    def noise_power_lin(self):
+        return 10 ** (self.noise_power / 10)
+
+    @noise_power_lin.setter
+    def noise_power_lin(self, noise_power_lin):
+        self.noise_power = 10 * log10(noise_power_lin + np.finfo(float).tiny)
+
     @classmethod
-    def initialize_ula(
+    def ula(
         cls,
         N,
         array_center=[0, 0, 0],
@@ -126,23 +137,22 @@ class AntennaArray:
             ).T
         else:
             raise ValueError("ax must be 'x', 'y' or 'z'")
-        # coordinates = cls._translate_coordinates(coordinates)
-        # coordinates = cls._translate_coordinates(coordinates, array_center)
         ula = cls(N, coordinates * spacing)
         ula.array_center = array_center
         for kwarg in kwargs:
             ula.__setattr__(kwarg, kwargs[kwarg])
         return ula
-
-    ula = initialize_ula
+    
+    initialize_ula = ula
 
     @classmethod
-    def initialize_upa(
+    def upa(
         cls,
         N: Iterable,
         array_center=(0, 0, 0),
         plane="xy",
         spacing=0.5,
+        **kwargs,
     ):
         """Empties the array and creates a half-wavelength spaced,
         uniform plannar array in the desired plane.
@@ -161,7 +171,6 @@ class AntennaArray:
         """
         num_rows = N[0]
         num_cols = N[1]
-
         if plane == "xy":
             coordinates = np.array(
                 [
@@ -190,9 +199,11 @@ class AntennaArray:
             raise ValueError("plane must be 'xy', 'yz' or 'xz'")
         upa = cls(num_rows * num_cols, coordinates * spacing)
         upa.array_center = array_center
+        for kwarg in kwargs:
+            upa.__setattr__(kwarg, kwargs[kwarg])
         return upa
 
-    upa = initialize_upa
+    initialize_upa = upa
 
     @classmethod
     def from_file(cls, filename):
@@ -249,6 +260,7 @@ class AntennaArray:
                     "The length of weights must match the number of antennas"
                 )
             self.weights = np.asarray(weights).reshape(-1)
+        np.clip(self.weights, 0, 1, out=self.weights)
 
     def get_weights(self, coordinates=None):
         """Get the weights of the antennas.

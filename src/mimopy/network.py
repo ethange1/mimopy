@@ -47,6 +47,10 @@ class Network:
     @nodes.setter
     def nodes(self, _):
         raise AttributeError("Cannot set nodes directly. Use add_nodes() instead.")
+    
+    n = nodes
+    l = property(lambda self: self.links)
+    topology = property(lambda self: self.connections)
 
     def _add_node(self, node: AntennaArray):
         """Add a node to the network."""
@@ -99,9 +103,11 @@ class Network:
         else:
             self._remove_node(nodes)
 
-    def _remove_link(self, link: Channel):
+    def _remove_link(self, link: Channel | str):
         """Remove a link from the network."""
-        self.links.remove(link)
+        if isinstance(link, str):
+            link = self.links[link]
+        self.links.pop(link.name, None)
         self.connections[link.tx]["dl"].remove((link.rx, link))
         self.connections[link.rx]["ul"].remove((link.tx, link))
 
