@@ -6,7 +6,7 @@ import numpy as np
 from numpy import log10, log2
 
 from .antenna_array import AntennaArray
-from .channels import *
+from .channels import Channel
 import matplotlib.pyplot as plt
 
 
@@ -88,11 +88,11 @@ class Network:
         if node in self.connections:
             for _, link in self.connections[node]["dl"]:
                 # the node is the tx; remove ul from link.rx
-                self.links.remove(link)
+                self.links.pop(link, None)
                 self.connections[link.rx]["ul"].remove((node, link))
             for _, link in self.connections[node]["ul"]:
                 # the node is the rx; remove dl from link.tx
-                self.links.remove(link)
+                self.links.pop(link, None)
                 self.connections[link.tx]["dl"].remove((node, link))
 
     def remove_nodes(self, nodes):
@@ -193,6 +193,10 @@ class Network:
             return {
                 link: self.bf_gain(link, linear=linear) for link in self.links.values()
             }
+        if isinstance(link, str):
+            link = self.links[link]
+        if isinstance(link, Iterable):
+            return {link: self.snr(link, linear=linear) for link in link}
         return link.bf_gain_lin if linear else link.bf_gain
 
     gain = bf_gain
@@ -204,6 +208,10 @@ class Network:
                 link: self.signal_power(link, linear=linear)
                 for link in self.links.values()
             }
+        if isinstance(link, str):
+            link = self.links[link]
+        if isinstance(link, Iterable):
+            return {link: self.snr(link, linear=linear) for link in link}
         return link.signal_power_lin if linear else link.signal_power
 
     def bf_noise_power(self, link: Channel | str = None, linear=False) -> float:
@@ -213,12 +221,20 @@ class Network:
                 link: self.bf_noise_power(link, linear=linear)
                 for link in self.links.values()
             }
+        if isinstance(link, str):
+            link = self.links[link]
+        if isinstance(link, Iterable):
+            return {link: self.snr(link, linear=linear) for link in link}
         return link.bf_noise_power_lin if linear else link.bf_noise_power
 
     def snr(self, link: Channel | str = None, linear=False) -> float:
         """Get the signal-to-noise ratio (SNR) of the link."""
         if link is None:
             return {link: self.snr(link, linear=linear) for link in self.links.values()}
+        if isinstance(link, Iterable):
+            return {link: self.snr(link, linear=linear) for link in link}
+        if isinstance(link, str):
+            link = self.links[link]
         return link.snr_lin if linear else link.snr
 
     # ===================================================================
@@ -284,7 +300,7 @@ class Network:
         """Plot the network."""
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
         if ax is None:
-            fig, ax = plt.subplots(**kwargs)
+            _, ax = plt.subplots(**kwargs)
         for node, value in self.connections.items():
             # plot nodes
             node_loc = node.location[coord_idx]
