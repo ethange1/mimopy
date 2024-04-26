@@ -2,10 +2,9 @@ from typing import Iterable
 
 import numpy as np
 import numpy.linalg as LA
-from numpy import log10, log2
+from numpy import log10
 import matplotlib.pyplot as plt
 from matplotlib import cm
-
 
 class AntennaArray:
     """Base class for array objects.
@@ -515,7 +514,7 @@ class AntennaArray:
         gain = (array_response @ self.weights.conj().reshape(-1, 1)) ** 2
         gain = np.asarray(np.squeeze(gain))
         mag = np.abs(gain)
-        phase = np.angle(gain)
+        # phase = np.angle(gain)
         # print(gain)
         if db:
             return 10 * log10(mag + np.finfo(float).tiny)
@@ -615,7 +614,7 @@ class AntennaArray:
         # vectorized version
         gain = self.get_array_gain(az, el, db=db, use_deg=False)
 
-        if ax == None:
+        if ax is None:
             if polar:
                 fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, **kwargs)
             else:
@@ -687,7 +686,7 @@ class AntennaArray:
             el_grid,
             gain,
             cmap="magma",
-            # facecolors=colors,
+            facecolors=colors,
             # linewidth=1,
         )
         ax.set_xlabel("Azimuth (deg)")
@@ -729,8 +728,6 @@ class AntennaArray:
         """
         if ax is None:
             fig, ax = plt.subplots()
-        else:
-            fig = ax.get_figure()
 
         if plane == "xy":
             ax.scatter(

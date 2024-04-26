@@ -1,12 +1,11 @@
 from typing import Any
-from collections import abc
 from collections.abc import Iterable
 
 import numpy as np
-from numpy import log10, log2
+from numpy import log10
 
 from .antenna_array import AntennaArray
-from .channels import *
+from .channels import Channel
 import matplotlib.pyplot as plt
 
 
