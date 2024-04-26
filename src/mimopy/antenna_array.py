@@ -34,7 +34,7 @@ class AntennaArray:
         for kwarg in kwargs:
             self.__setattr__(kwarg, kwargs[kwarg])
 
-    N = property(lambda self: self.num_antennas)
+    N = Nr = Nt = property(lambda self: self.num_antennas)
 
     def __str__(self):
         return self.name
@@ -260,7 +260,6 @@ class AntennaArray:
                     "The length of weights must match the number of antennas"
                 )
             self.weights = np.asarray(weights).reshape(-1)
-        np.clip(self.weights, 0, 1, out=self.weights)
 
     def get_weights(self, coordinates=None):
         """Get the weights of the antennas.

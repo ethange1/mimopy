@@ -93,7 +93,8 @@ class Channel:
     def bf_noise_power_lin(self):
         """Noise power after beamforming combining in linear scale."""
         w = self.rx.weights.flatten()
-        return float(LA.norm(w) ** 2 * self.rx.noise_power_lin)
+        # return float(LA.norm(w) ** 2 * self.rx.noise_power_lin)
+        return float(self.rx.noise_power_lin)
 
     @property
     def bf_noise_power(self) -> float:
@@ -105,7 +106,7 @@ class Channel:
         """Normalized beamforming gain |wHf|^2 / Nt in linear scale."""
         f = self.tx.weights.reshape(-1, 1)
         w = self.rx.weights.reshape(-1, 1)
-        return float(np.abs(w.T @ self.H @ f) ** 2 / self.tx.N)
+        return float(np.abs(w.T @ self.H @ f) ** 2 / (self.tx.N * LA.norm(w) ** 2))
 
     @property
     def bf_gain(self) -> float:
