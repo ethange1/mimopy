@@ -46,7 +46,7 @@ class Network:
     @nodes.setter
     def nodes(self, _):
         raise AttributeError("Cannot set nodes directly. Use add_nodes() instead.")
-    
+
     n = nodes
     l = property(lambda self: self.links)
     topology = property(lambda self: self.connections)
@@ -246,7 +246,7 @@ class Network:
             return {
                 link: self.interference(link, linear=linear)
                 for link in self.links.values()
-        }
+            }
         if isinstance(link, str):
             link = self.links[link]
         interference_lin = 0
@@ -372,19 +372,20 @@ class Network:
             plt.show()
         return fig, ax
 
-    def plot_gain(self, polar=False, weights=None, **kwargs):
+    def plot_gain(self, polar=True, axes=None, weights=None, ylim=-20, **kwargs):
         """Plot the beam pattern of the controlled nodes."""
         num_plots = len(self.target_nodes)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
         num_rows = np.ceil(num_plots / num_cols).astype(int)
         if "figsize" not in kwargs:
             kwargs["figsize"] = (5 * num_cols, 5 * num_rows)
-        if polar:
-            fig, axes = plt.subplots(
-                num_rows, num_cols, subplot_kw={"polar": True}, **kwargs
-            )
-        else:
-            fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
+        if axes is None:
+            if polar:
+                fig, axes = plt.subplots(
+                    num_rows, num_cols, subplot_kw={"polar": True}, **kwargs
+                )
+            else:
+                fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
         for i, (node, ax) in enumerate(zip(self.target_nodes, np.ravel(axes))):
             if weights is not None:
                 node.plot_gain(ax=ax, weights=weights[i], polar=polar)
@@ -392,5 +393,11 @@ class Network:
                 node.plot_gain(ax=ax, polar=polar)
             title = ax.get_title()
             ax.set_title(f"{node.name}: {title}")
-        plt.tight_layout()
-        plt.show()
+        if polar:
+            for ax in axes:
+                ax.set_ylim(bottom=ylim)
+                ax.set_theta_zero_location("E")
+                ax.set_theta_direction(1)
+        if axes is None:
+            plt.tight_layout()
+            plt.show()
