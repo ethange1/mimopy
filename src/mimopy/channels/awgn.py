@@ -1,9 +1,8 @@
-from typing import Any
 import numpy as np
 import numpy.linalg as LA
 from numpy import log10, log2
 
-
+from .path_loss import NoLoss
 # from ..array import AntennaArray
 class Channel:
     """Base class for AWGN Channel.
@@ -20,7 +19,7 @@ class Channel:
         carrier_wavelength (float): Carrier wavelength in meters.
     """
 
-    def __init__(self, tx=None, rx=None, name=None, *args, **kwargs):
+    def __init__(self, tx=None, rx=None, name=None, path_loss=NoLoss(), *args, **kwargs):
         # use class name as default name
         self.name = name
         if name is None:
@@ -31,12 +30,13 @@ class Channel:
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
+        self.path_loss = path_loss
 
     def __str__(self):
         return self.name
-
+    
     def __repr__(self):
-        return self.name
+        return f"{self.name} ({self.__class__.__name__})"
 
     H = property(lambda self: self.channel_matrix)
 
@@ -48,22 +48,6 @@ class Channel:
     def energy(self):
         """Energy of the channel matrix."""
         return LA.norm(self.H, "fro") ** 2
-
-    # @property
-    # def ul(self):
-    #     return self.tx
-
-    # @ul.setter
-    # def ul(self, tx):
-    #     self.tx = tx
-
-    # @property
-    # def dl(self):
-    #     return self.rx
-
-    # @dl.setter
-    # def dl(self, rx):
-    #     self.rx = rx
 
     @property
     def nodes(self):
@@ -92,7 +76,7 @@ class Channel:
     @property
     def bf_noise_power_lin(self):
         """Noise power after beamforming combining in linear scale."""
-        w = self.rx.weights.flatten()
+        # w = self.rx.weights.flatten()
         # return float(LA.norm(w) ** 2 * self.rx.noise_power_lin)
         return float(self.rx.noise_power_lin)
 
@@ -119,7 +103,8 @@ class Channel:
     @property
     def signal_power_lin(self) -> float:
         """Signal power after beamforming in linear scale."""
-        return self.tx.power * self.bf_gain_lin
+        rec_power = self.path_loss.received_power(self)
+        return rec_power * self.bf_gain_lin
 
     @property
     def signal_power(self) -> float:
@@ -129,7 +114,8 @@ class Channel:
     @property
     def snr_lin(self) -> float:
         """Signal-to-noise ratio (SNR) in linear scale."""
-        return float(self.tx.power * self.bf_gain_lin / self.bf_noise_power_lin)
+        rec_power = self.path_loss.received_power(self)
+        return float(rec_power * self.bf_gain_lin / self.bf_noise_power_lin)
 
     @property
     def snr(self) -> float:
