@@ -1,7 +1,7 @@
 from .awgn import Channel
 import numpy as np
 from .path_loss import get_path_loss
-
+from ..utils.geometry import get_relative_position
 
 class LoS(Channel):
     """Line-of-sight channel class.
@@ -43,7 +43,7 @@ class LoS(Channel):
         self.path_loss = get_path_loss(path_loss)
 
         if az is None or el is None:
-            _, az_new, el_new = self.get_relative_position(
+            _, az_new, el_new = get_relative_position(
                 self.tx.array_center, self.rx.array_center
             )
             az = az_new if az is None else az

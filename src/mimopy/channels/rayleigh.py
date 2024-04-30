@@ -1,5 +1,6 @@
 import numpy as np
 from .awgn import Channel
+from ..devices import AntennaArray
 from .path_loss import get_path_loss
 
 
@@ -12,7 +13,7 @@ class Rayleigh(Channel):
         Seed for random number generator.
     """
 
-    def __init__(self, tx, rx, *args, **kwargs):
+    def __init__(self, tx: AntennaArray, rx: AntennaArray, *args, **kwargs):
         super().__init__(tx=tx, rx=rx, *args, **kwargs)
 
     def realize(self, path_loss="no_loss", seed=None, energy=None):

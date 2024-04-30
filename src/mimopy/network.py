@@ -1,6 +1,5 @@
-from typing import Any
+from typing import List, Dict, Tuple
 from collections.abc import Iterable
-from functools import cached_property
 
 import numpy as np
 from numpy import log10
@@ -25,10 +24,12 @@ class Network:
 
     def __init__(self, name="Network", *args, **kwargs):
         self.name = name
-        self.links = {}
-        self.connections = {}
-        self.target_links = []
-        self.target_nodes = []
+        self.links: Dict[str, Channel] = {}
+        self.connections: Dict[
+            AntennaArray, Dict[str, List[Tuple[AntennaArray, Channel]]]
+        ] = {}
+        self.target_links: List[Channel] = []
+        self.target_nodes: List[AntennaArray] = []
 
     def __str__(self):
         return self.name
@@ -41,7 +42,7 @@ class Network:
     # ===================================================================
 
     @property
-    def nodes(self: Iterable[AntennaArray]):
+    def nodes(self):
         return {key.name: key for key in self.connections.keys()}
 
     @nodes.setter
@@ -175,7 +176,7 @@ class Network:
     def _is_target_node(self, node: AntennaArray):
         return node in self.target_nodes
 
-    def is_target(self, obj: Any):
+    def is_target(self, obj: AntennaArray | Channel):
         if isinstance(obj, Channel):
             return self._is_target_link(obj)
         elif isinstance(obj, AntennaArray):
@@ -190,13 +191,11 @@ class Network:
     def bf_gain(self, link: Channel | str = None, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         if link is None:
-            return {
-                link: self.bf_gain(link, linear=linear) for link in self.links.values()
-            }
+            return {link: self.bf_gain(link, linear) for link in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
-            return {link: self.snr(link, linear=linear) for link in link}
+            return {link: self.snr(link, linear) for link in link}
         return link.bf_gain_lin if linear else link.bf_gain
 
     gain = bf_gain
@@ -204,23 +203,17 @@ class Network:
     def signal_power(self, link: Channel | str = None, linear=False) -> float:
         """Get the beamforming gain of the link in dB."""
         if link is None:
-            return {
-                link: self.signal_power(link, linear=linear)
-                for link in self.links.values()
-            }
+            return {lk: self.signal_power(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
-            return {link: self.snr(link, linear=linear) for link in link}
+            return {link: self.snr(link, linear) for link in link}
         return link.signal_power_lin if linear else link.signal_power
 
     def bf_noise_power(self, link: Channel | str = None, linear=False) -> float:
         """Get the noise power after beamforming in dBm."""
         if link is None:
-            return {
-                link: self.bf_noise_power(link, linear=linear)
-                for link in self.links.values()
-            }
+            return {lk: self.bf_noise_power(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
@@ -230,9 +223,9 @@ class Network:
     def snr(self, link: Channel | str = None, linear=False) -> float:
         """Get the signal-to-noise ratio (SNR) of the link."""
         if link is None:
-            return {link: self.snr(link, linear=linear) for link in self.links.values()}
+            return {lk: self.snr(lk, linear) for lk in self.links.values()}
         if isinstance(link, Iterable):
-            return {link: self.snr(link, linear=linear) for link in link}
+            return {lk: self.snr(lk, linear) for lk in link}
         if isinstance(link, str):
             link = self.links[link]
         return link.snr_lin if linear else link.snr
@@ -240,10 +233,7 @@ class Network:
     def snr_upper_bound(self, link: Channel | str = None, linear=False) -> float:
         """Get the SNR upper bound of the link."""
         if link is None:
-            return {
-                link: self.snr_upper_bound(link, linear=linear)
-                for link in self.links.values()
-            }
+            return {lk: self.snr_upper_bound(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         return link.snr_upper_bound_lin if linear else 10 * log10(link.snr_upper_bound)
@@ -255,13 +245,13 @@ class Network:
         """Get the interference of the link."""
         # interference is the sum of bf gains of all other ul links of the rx
         if link is None:
-            return {l: self.interference(l, linear=linear) for l in self.links.values()}
+            return {lk: self.interference(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         interference_lin = 0
-        for _, l in self.connections[link.rx]["ul"]:
-            if l != link:
-                interference_lin += self.signal_power(l, linear=True)
+        for _, ul in self.connections[link.rx]["ul"]:
+            if ul != link:
+                interference_lin += self.signal_power(ul, linear=True)
         return (
             interference_lin
             if linear
@@ -271,7 +261,7 @@ class Network:
     def inr(self, link=None, linear=False) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
         if link is None:
-            return {l: self.inr(l, linear=linear) for l in self.links.values()}
+            return {lk: self.inr(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         inr_lin = self.interference(link, linear=True) / self.bf_noise_power(
@@ -282,7 +272,7 @@ class Network:
     def sinr(self, link=None, linear=False) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
         if link is None:
-            return {l: self.sinr(l, linear=linear) for l in self.links.values()}
+            return {lk: self.sinr(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         sinr_lin = self.signal_power(link, linear=True) / (
@@ -294,23 +284,23 @@ class Network:
     def spectral_efﬁciency(self, link=None) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
         if link is None:
-            return {l: self.spectral_efﬁciency(l) for l in self.links.values()}
+            return {lk: self.spectral_efﬁciency(lk) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         return float(log10(1 + 10 ** (self.sinr(link) / 10)))
 
-    # def inr_upper_bound(self, link: Channel | str = None, linear=False) -> float:
-    #     """Get the INR upper bound of the link."""
-    #     if link is None:
-    #         return {
-    #             l: self.inr_upper_bound(l, linear=linear) for l in self.links.values()
-    #         }
-    #     if isinstance(link, str):
-    #         link = self.links[link]
-    #     intference_ub = 0
-    #     for tx, l in self.connections[link.rx]["ul"]:
-    #         if l != link:
-                
+    def inr_upper_bound(self, link: Channel | str = None, linear=False) -> float:
+        """Get the INR upper bound of the link. See Eq. (9) in LoneSTAR"""
+        if link is None:
+            return {lk: self.inr_upper_bound(lk, linear) for lk in self.links.values()}
+        if isinstance(link, str):
+            link = self.links[link]
+        sig_pow_nb = 0
+        for tx, ul in self.connections[link.rx]["ul"]:
+            if ul != link:
+                sig_pow_nb += ul.rx_power * tx.N * ul.rx.N
+        inr_ub_lin = sig_pow_nb / link.rx.noise_power_lin
+        return inr_ub_lin if linear else 10 * log10(inr_ub_lin + np.finfo(float).tiny)
 
     # ===================================================================
     # Plotting methods
@@ -348,8 +338,7 @@ class Network:
                     offset = np.random.uniform(dl_loc - node_loc) * 0.1
                     ax.annotate(
                         link.name,
-                        (dl_loc + node_loc) / 2
-                        + np.random.uniform(dl_loc - node_loc) * 0.1,
+                        (dl_loc + node_loc) / 2 + offset
                     )
         plt.xlabel(f"{plane[0]}-axis")
         plt.ylabel(f"{plane[1]}-axis")
