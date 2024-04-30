@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .. import Channel
+from ..awgn import Channel
 
 class PathLoss(ABC):
     @abstractmethod
@@ -7,11 +7,10 @@ class PathLoss(ABC):
         """Return the received power at the receiver."""
         pass
 
+
 class NoLoss(PathLoss):
     def __str__(self):
         return "no_fading"
 
     def received_power(self, channel:Channel):
         return channel.tx.power
-    
-    

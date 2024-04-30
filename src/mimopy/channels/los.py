@@ -1,6 +1,6 @@
 from .awgn import Channel
 import numpy as np
-from numpy import log10
+from .path_loss import get_path_loss
 
 
 class LoS(Channel):
@@ -31,7 +31,7 @@ class LoS(Channel):
 
     aod = aoa
 
-    def realize(self, energy=None, az=None, el=None):
+    def realize(self, path_loss="no_loss", energy=None, az=None, el=None):
         """Realize the channel.
 
         Parameters
@@ -40,6 +40,8 @@ class LoS(Channel):
             AoA/AoD. If not specified, the angles are
             calculated based on the relative position of the transmitter and receiver.
         """
+        self.path_loss = get_path_loss(path_loss)
+
         if az is None or el is None:
             _, az_new, el_new = self.get_relative_position(
                 self.tx.array_center, self.rx.array_center

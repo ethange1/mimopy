@@ -3,6 +3,7 @@ from .awgn import Channel
 from .los import LoS
 from .spherical_wave import SphericalWave
 from .rayleigh import Rayleigh
+from .path_loss import get_path_loss
 
 
 class Rician(Channel):
@@ -24,9 +25,10 @@ class Rician(Channel):
         self.K = 10 ** (K / 10)  # Convert K-factor to linear scale
         self.nlos = Rayleigh(tx=self.tx, rx=self.rx)
 
-    def realize(self, seed=None, energy=None):
+    def realize(self, path_loss="no_loss", seed=None, energy=None):
         """Realize the channel. If random is True, the non-line-of-sight channel
         matrix is generated randomly."""
+        self.path_loss = get_path_loss(path_loss)
         if energy is None:
             energy = self.tx.N * self.rx.N
         np.random.seed(seed)

@@ -1,5 +1,6 @@
 from typing import Any
 from collections.abc import Iterable
+from functools import cached_property
 
 import numpy as np
 from numpy import log10
@@ -48,7 +49,7 @@ class Network:
         raise AttributeError("Cannot set nodes directly. Use add_nodes() instead.")
 
     n = nodes
-    l = property(lambda self: self.links)
+    l = property(lambda self: self.links)  # noqa: E741
     topology = property(lambda self: self.connections)
 
     def _add_node(self, node: AntennaArray):
@@ -236,6 +237,17 @@ class Network:
             link = self.links[link]
         return link.snr_lin if linear else link.snr
 
+    def snr_upper_bound(self, link: Channel | str = None, linear=False) -> float:
+        """Get the SNR upper bound of the link."""
+        if link is None:
+            return {
+                link: self.snr_upper_bound(link, linear=linear)
+                for link in self.links.values()
+            }
+        if isinstance(link, str):
+            link = self.links[link]
+        return link.snr_upper_bound_lin if linear else 10 * log10(link.snr_upper_bound)
+
     # ===================================================================
     # Network measurement methods
     # ===================================================================
@@ -243,10 +255,7 @@ class Network:
         """Get the interference of the link."""
         # interference is the sum of bf gains of all other ul links of the rx
         if link is None:
-            return {
-                link: self.interference(link, linear=linear)
-                for link in self.links.values()
-            }
+            return {l: self.interference(l, linear=linear) for l in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         interference_lin = 0
@@ -262,7 +271,7 @@ class Network:
     def inr(self, link=None, linear=False) -> float:
         """Get the interference-to-noise ratio (INR) of the link in dB."""
         if link is None:
-            return {link: self.inr(link, linear=linear) for link in self.links.values()}
+            return {l: self.inr(l, linear=linear) for l in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         inr_lin = self.interference(link, linear=True) / self.bf_noise_power(
@@ -273,9 +282,7 @@ class Network:
     def sinr(self, link=None, linear=False) -> float:
         """Get the signal-to-interference-plus-noise ratio (SINR) of the link in dB."""
         if link is None:
-            return {
-                link: self.sinr(link, linear=linear) for link in self.links.values()
-            }
+            return {l: self.sinr(l, linear=linear) for l in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         sinr_lin = self.signal_power(link, linear=True) / (
@@ -287,10 +294,23 @@ class Network:
     def spectral_efﬁciency(self, link=None) -> float:
         """Get the spectral efﬁciency of the link in bps/Hz."""
         if link is None:
-            return {link: self.spectral_efﬁciency(link) for link in self.links.values()}
+            return {l: self.spectral_efﬁciency(l) for l in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         return float(log10(1 + 10 ** (self.sinr(link) / 10)))
+
+    # def inr_upper_bound(self, link: Channel | str = None, linear=False) -> float:
+    #     """Get the INR upper bound of the link."""
+    #     if link is None:
+    #         return {
+    #             l: self.inr_upper_bound(l, linear=linear) for l in self.links.values()
+    #         }
+    #     if isinstance(link, str):
+    #         link = self.links[link]
+    #     intference_ub = 0
+    #     for tx, l in self.connections[link.rx]["ul"]:
+    #         if l != link:
+                
 
     # ===================================================================
     # Plotting methods

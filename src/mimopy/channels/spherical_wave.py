@@ -1,5 +1,6 @@
 import numpy as np
 from .awgn import Channel
+from .path_loss import get_path_loss
 
 
 class SphericalWave(Channel):
@@ -8,11 +9,11 @@ class SphericalWave(Channel):
     def __init__(self, tx, rx, name="SphericalWave", **kwargs):
         super().__init__(tx, rx, name, **kwargs)
 
-    def realize(self, energy=None):
+    def realize(self, path_loss="no_loss", energy=None):
         """Realize the channel."""
+        self.path_loss = get_path_loss(path_loss)
         tc = self.tx.coordinates
         rc = self.rx.coordinates
-
         dx = tc[:, 0].reshape(-1, 1) - rc[:, 0].reshape(1, -1)
         dy = tc[:, 1].reshape(-1, 1) - rc[:, 1].reshape(1, -1)
         dz = tc[:, 2].reshape(-1, 1) - rc[:, 2].reshape(1, -1)

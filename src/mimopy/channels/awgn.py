@@ -1,9 +1,11 @@
+from functools import cached_property
+from abc import abstractmethod
 import numpy as np
 import numpy.linalg as LA
 from numpy import log10, log2
+from ..antenna_array import AntennaArray
 
-from .path_loss import NoLoss
-# from ..array import AntennaArray
+
 class Channel:
     """Base class for AWGN Channel.
 
@@ -19,7 +21,14 @@ class Channel:
         carrier_wavelength (float): Carrier wavelength in meters.
     """
 
-    def __init__(self, tx=None, rx=None, name=None, path_loss=NoLoss(), *args, **kwargs):
+    def __init__(
+        self,
+        tx: AntennaArray = None,
+        rx: AntennaArray = None,
+        name=None,
+        *args,
+        **kwargs,
+    ):
         # use class name as default name
         self.name = name
         if name is None:
@@ -30,11 +39,11 @@ class Channel:
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
-        self.path_loss = path_loss
+        self.path_loss = None
 
     def __str__(self):
         return self.name
-    
+
     def __repr__(self):
         return f"{self.name} ({self.__class__.__name__})"
 
@@ -60,9 +69,10 @@ class Channel:
     # Channel matrix
     # ========================================================
 
+    @abstractmethod
     def realize(self):
         """Realize the channel."""
-        raise NotImplementedError
+        pass
 
     def normalize_energy(self, energy):
         """Normalize the channel energy."""
@@ -72,6 +82,10 @@ class Channel:
     # ========================================================
     # Measurements
     # ========================================================
+    @property
+    def rx_power(self):
+        """Received power in linear scale."""
+        return self.path_loss.received_power(self)
 
     @property
     def bf_noise_power_lin(self):
@@ -103,8 +117,7 @@ class Channel:
     @property
     def signal_power_lin(self) -> float:
         """Signal power after beamforming in linear scale."""
-        rec_power = self.path_loss.received_power(self)
-        return rec_power * self.bf_gain_lin
+        return self.rx_power * self.bf_gain_lin
 
     @property
     def signal_power(self) -> float:
@@ -114,8 +127,7 @@ class Channel:
     @property
     def snr_lin(self) -> float:
         """Signal-to-noise ratio (SNR) in linear scale."""
-        rec_power = self.path_loss.received_power(self)
-        return float(rec_power * self.bf_gain_lin / self.bf_noise_power_lin)
+        return float(self.rx_power * self.bf_gain_lin / self.bf_noise_power_lin)
 
     @property
     def snr(self) -> float:
@@ -126,6 +138,16 @@ class Channel:
     def capacity(self) -> float:
         """Channel capacity in bps/Hz."""
         return log2(1 + self.snr_lin)
+
+    @cached_property
+    def snr_upper_bound_lin(self) -> float:
+        """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
+        return self.rx_power * self.tx.N * self.rx.N / self.rx.noise_power_lin
+    
+    @cached_property
+    def snr_upper_bound(self) -> float:
+        """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
+        return 10 * log10(self.snr_upper_bound_lin + np.finfo(float).tiny)
 
     # ========================================================
     # Skip Setters
@@ -163,17 +185,6 @@ class Channel:
     def _cant_be_set():
         # raise warning
         raise Warning("This property can't be set, skipping...")
-
-    # def get_bf_gain(self, linear=False) -> float:
-    #     """Get the beamforming gain of the channel in dBm."""
-    #     f = self.tx.get_weights().reshape(-1, 1)
-    #     H = self.get_channel_matrix()
-    #     w = self.rx.get_weights().reshape(-1, 1)
-    #     P = self.tx.power
-    #     gain = P * np.abs(w.conj().T @ H @ f) ** 2
-    #     if linear:
-    #         return gain
-    #     return 10 * log10(gain)
 
     # ========================================================
     # Physical properties
