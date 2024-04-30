@@ -3,7 +3,7 @@ from abc import abstractmethod
 import numpy as np
 import numpy.linalg as LA
 from numpy import log10, log2
-from ..antenna_array import AntennaArray
+from ..devices.antenna_array import AntennaArray
 
 
 class Channel:
@@ -228,8 +228,8 @@ class Channel:
 
         Parameters
         ----------
-            loc1, loc2: array_like, shape (3,)
-                Location of the 2 points.
+        loc1, loc2: array_like, shape (3,)
+            Location of the 2 points.
         """
         loc1 = np.asarray(loc1).reshape(3)
         loc2 = np.asarray(loc2).reshape(3)
