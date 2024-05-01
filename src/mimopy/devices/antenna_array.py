@@ -83,16 +83,6 @@ class AntennaArray:
         self.coordinates += delta_location
 
     @property
-    def power_lin(self):
-        return 10 ** (self.power / 10)
-    
-    @power_lin.setter
-    def power_lin(self, power_lin):
-        if power_lin < 0:
-            raise ValueError("Power must be positive")
-        self.power = 10 * log10(power_lin + np.finfo(float).tiny)
-
-    @property
     def noise_power_lin(self):
         return 10 ** (self.noise_power / 10)
 

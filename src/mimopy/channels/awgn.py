@@ -88,93 +88,93 @@ class Channel:
         return self.path_loss.received_power(self)
 
     @property
-    def bf_noise_power_lin(self):
+    def bf_noise_power(self):
         """Noise power after beamforming combining in linear scale."""
         # w = self.rx.weights.flatten()
         # return float(LA.norm(w) ** 2 * self.rx.noise_power_lin)
         return float(self.rx.noise_power_lin)
 
     @property
-    def bf_noise_power(self) -> float:
+    def bf_noise_power_db(self) -> float:
         """Noise power after beamforming in dBm."""
-        return 10 * log10(self.bf_noise_power_lin + np.finfo(float).tiny)
+        return 10 * log10(self.bf_noise_power + np.finfo(float).tiny)
 
     @property
-    def bf_gain_lin(self) -> float:
+    def bf_gain(self) -> float:
         """Normalized beamforming gain |wHf|^2 / Nt in linear scale."""
         f = self.tx.weights.reshape(-1, 1)
         w = self.rx.weights.reshape(-1, 1)
         return float(np.abs(w.T @ self.H @ f) ** 2 / (self.tx.N * LA.norm(w) ** 2))
 
     @property
-    def bf_gain(self) -> float:
+    def bf_gain_db(self) -> float:
         """Normalized beamforming gain |wHf|^2 / Nt in dB."""
-        return 10 * log10(self.bf_gain_lin + np.finfo(float).tiny)
+        return 10 * log10(self.bf_gain + np.finfo(float).tiny)
 
-    gain_lin = bf_gain_lin
     gain = bf_gain
-
-    @property
-    def signal_power_lin(self) -> float:
-        """Signal power after beamforming in linear scale."""
-        return self.rx_power * self.bf_gain_lin
+    gain_db = bf_gain_db
 
     @property
     def signal_power(self) -> float:
-        """Normalized signal power after beamforming in dBm."""
-        return 10 * log10(self.signal_power_lin + np.finfo(float).tiny)
+        """Signal power after beamforming in linear scale."""
+        return self.rx_power * self.bf_gain
 
     @property
-    def snr_lin(self) -> float:
-        """Signal-to-noise ratio (SNR) in linear scale."""
-        return float(self.rx_power * self.bf_gain_lin / self.bf_noise_power_lin)
+    def signal_power_db(self) -> float:
+        """Normalized signal power after beamforming in dBm."""
+        return 10 * log10(self.signal_power + np.finfo(float).tiny)
 
     @property
     def snr(self) -> float:
+        """Signal-to-noise ratio (SNR) in linear scale."""
+        return float(self.rx_power * self.bf_gain / self.bf_noise_power)
+
+    @property
+    def snr_db(self) -> float:
         """Signal-to-noise ratio (SNR) in dB."""
-        return 10 * log10(self.snr_lin + np.finfo(float).tiny)
+        return 10 * log10(self.snr + np.finfo(float).tiny)
 
     @property
     def capacity(self) -> float:
         """Channel capacity in bps/Hz."""
-        return log2(1 + self.snr_lin)
+        return log2(1 + self.snr)
 
     @cached_property
-    def snr_upper_bound_lin(self) -> float:
+    def snr_upper_bound(self) -> float:
         """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
         return self.rx_power * self.tx.N * self.rx.N / self.rx.noise_power_lin
     
     @cached_property
-    def snr_upper_bound(self) -> float:
+    def snr_upper_bound_db(self) -> float:
         """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
-        return 10 * log10(self.snr_upper_bound_lin + np.finfo(float).tiny)
+        return 10 * log10(self.snr_upper_bound + np.finfo(float).tiny)
 
     # ========================================================
     # Skip Setters
     # ========================================================
 
-    @signal_power_lin.setter
-    def signal_power_lin(self, _):
-        self._cant_be_set()
-
     @signal_power.setter
     def signal_power(self, _):
         self._cant_be_set()
 
-    @bf_noise_power_lin.setter
-    def bf_noise_power_lin(self, _):
+    @signal_power_db.setter
+    def signal_power_db(self, _):
         self._cant_be_set()
 
     @bf_noise_power.setter
     def bf_noise_power(self, _):
         self._cant_be_set()
 
-    @snr_lin.setter
-    def snr_lin(self, _):
+    @bf_noise_power_db.setter
+    def bf_noise_power_db(self, _):
         self._cant_be_set()
 
     @snr.setter
     def snr(self, _):
+        self._cant_be_set()
+
+    @snr_db.setter
+    def snr_db(self, _):
         self._cant_be_set()
 
     @capacity.setter
