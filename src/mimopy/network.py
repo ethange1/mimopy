@@ -188,14 +188,23 @@ class Network:
     # Link measurement methods wrapper
     # ===================================================================
 
-    def bf_gain(self, link: Channel | str = None, linear=False) -> float:
-        """Get the beamforming gain of the link in dB."""
+    def rx_power(self, link: Channel | str = None) -> float:
         if link is None:
-            return {link: self.bf_gain(link, linear) for link in self.links.values()}
+            return {lk: self.rx_power(lk) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
-            return {link: self.snr(link, linear) for link in link}
+            return {lk: self.rx_power(lk) for lk in link}
+        return link.rx_power
+
+    def bf_gain(self, link: Channel | str = None, linear=False) -> float:
+        """Get the beamforming gain of the link in dB."""
+        if link is None:
+            return {lk: self.bf_gain(lk, linear) for lk in self.links.values()}
+        if isinstance(link, str):
+            link = self.links[link]
+        if isinstance(link, Iterable):
+            return {lk: self.snr(lk, linear) for lk in link}
         return link.bf_gain_lin if linear else link.bf_gain
 
     gain = bf_gain
@@ -207,7 +216,7 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
-            return {link: self.snr(link, linear) for link in link}
+            return {lk: self.snr(lk, linear) for lk in link}
         return link.signal_power_lin if linear else link.signal_power
 
     def bf_noise_power(self, link: Channel | str = None, linear=False) -> float:
@@ -217,7 +226,7 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
-            return {link: self.snr(link, linear=linear) for link in link}
+            return {lk: self.snr(lk, linear=linear) for lk in link}
         return link.bf_noise_power_lin if linear else link.bf_noise_power
 
     def snr(self, link: Channel | str = None, linear=False) -> float:
@@ -236,7 +245,7 @@ class Network:
             return {lk: self.snr_upper_bound(lk, linear) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
-        return link.snr_upper_bound_lin if linear else 10 * log10(link.snr_upper_bound)
+        return link.snr_upper_bound_lin if linear else link.snr_upper_bound
 
     # ===================================================================
     # Network measurement methods
