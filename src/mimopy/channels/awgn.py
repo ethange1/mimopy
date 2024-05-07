@@ -1,4 +1,3 @@
-from functools import cached_property
 from abc import abstractmethod
 import numpy as np
 import numpy.linalg as LA
@@ -139,12 +138,12 @@ class Channel:
         """Channel capacity in bps/Hz."""
         return log2(1 + self.snr)
 
-    @cached_property
+    @property
     def snr_upper_bound(self) -> float:
         """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
         return self.rx_power * self.tx.N * self.rx.N / self.rx.noise_power_lin
     
-    @cached_property
+    @property
     def snr_upper_bound_db(self) -> float:
         """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
         return 10 * log10(self.snr_upper_bound + np.finfo(float).tiny)

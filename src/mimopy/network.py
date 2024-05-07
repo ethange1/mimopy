@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple
 from collections.abc import Iterable
 
 import numpy as np
-from numpy import log10
+from numpy import log10, log2
 
 from .devices.antenna_array import AntennaArray
 from .channels import Channel
@@ -42,7 +42,7 @@ class Network:
     # ===================================================================
 
     @property
-    def nodes(self):
+    def nodes(self) -> Dict[str, AntennaArray]:
         return {key.name: key for key in self.connections.keys()}
 
     @nodes.setter
@@ -234,7 +234,7 @@ class Network:
         if link is None:
             return {lk: self.snr(lk, db) for lk in self.links.values()}
         if isinstance(link, Iterable):
-            return {lk: self.snr(lk, db) for lk in link}
+            return [self.snr(lk, db) for lk in link]
         if isinstance(link, str):
             link = self.links[link]
         return link.snr_db if db else link.snr
@@ -245,6 +245,8 @@ class Network:
             return {lk: self.snr_upper_bound(lk, db) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
+        if isinstance(link, Iterable):
+            return [self.snr_upper_bound(lk, db) for lk in link]
         return link.snr_upper_bound_db if db else link.snr_upper_bound
 
     # ===================================================================
@@ -289,7 +291,7 @@ class Network:
             return {lk: self.spectral_efﬁciency(lk) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
-        return float(log10(1 + self.sinr(link, db=False)))
+        return float(log2(1 + self.sinr(link, db=False)))
 
     def inr_upper_bound(self, link: Channel | str = None, db=True) -> float:
         """Get the INR upper bound of the link. See Eq. (9) in LoneSTAR"""
