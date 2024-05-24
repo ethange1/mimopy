@@ -16,24 +16,33 @@ class Rician(Channel):
         H_nlos (np.ndarray): Non-line-of-sight channel matrix.
     """
 
-    def __init__(self, tx, rx, K=10, nearfield=False, *args, **kwargs):
-        super().__init__(tx=tx, rx=rx, *args, **kwargs)
-        if nearfield:
-            self.los = SphericalWave(tx=self.tx, rx=self.rx)
-        else:
-            self.los = LoS(tx=self.tx, rx=self.rx)
+    def __init__(
+        self,
+        tx,
+        rx,
+        path_loss="no_loss",
+        K=10,
+        nearfield=False,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(tx, rx, path_loss, *args, **kwargs)
         self.K = 10 ** (K / 10)  # Convert K-factor to linear scale
-        self.nlos = Rayleigh(tx=self.tx, rx=self.rx)
+        self.nearfield = nearfield
+        if nearfield:
+            self.los = SphericalWave(tx, rx, path_loss)
+        else:
+            self.los = LoS(tx, rx, path_loss)
+        self.nlos = Rayleigh(tx, rx, path_loss, seed=self.seed)
 
-    def realize(self, path_loss="no_loss", seed=None, energy=None):
-        """Realize the channel. If random is True, the non-line-of-sight channel
-        matrix is generated randomly."""
-        self.path_loss = get_path_loss(path_loss)
-        if energy is None:
-            energy = self.tx.N * self.rx.N
-        np.random.seed(seed)
-        self.los.realize(energy=energy)
-        self.nlos.realize(seed=seed, energy=energy)
+    def realize(self):
+        """Realize the channel."""
+        self.los.realize()
+
+        np.random.seed(self.seed)
+        self.nlos.seed = self.seed
+        self.nlos.realize()
+        
         self.channel_matrix = (
             np.sqrt(self.K / (self.K + 1)) * self.los.H
             + np.sqrt(1 / (self.K + 1)) * self.nlos.H

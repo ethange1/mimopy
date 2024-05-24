@@ -3,6 +3,7 @@ import numpy as np
 import numpy.linalg as LA
 from numpy import log10, log2
 from ..devices.antenna_array import AntennaArray
+from .path_loss import get_path_loss
 
 
 class Channel:
@@ -22,23 +23,28 @@ class Channel:
 
     def __init__(
         self,
-        tx: AntennaArray = None,
-        rx: AntennaArray = None,
-        name=None,
+        tx: AntennaArray,
+        rx: AntennaArray,
+        path_loss="no_loss",
+        seed=None,
         *args,
         **kwargs,
     ):
         # use class name as default name
-        self.name = name
-        if name is None:
-            self.name = self.__class__.__name__
+        self.name = self.__class__.__name__
         self.tx = tx
         self.rx = rx
+        self.path_loss = get_path_loss(path_loss)
+        self.energy = self.tx.N * self.rx.N
+        self.seed = seed
+
         self.channel_matrix = None
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
         self._carrier_wavelength = self.propagation_velocity / self.carrier_frequency
-        self.path_loss = None
+
+        for kw, arg in kwargs.items():
+            setattr(self, kw, arg)
 
     def __str__(self):
         return self.name
@@ -75,7 +81,8 @@ class Channel:
 
     def normalize_energy(self, energy):
         """Normalize the channel energy."""
-        self.H = np.sqrt(energy) * self.H / LA.norm(self.H, "fro")
+        if energy is not None:
+            self.H = np.sqrt(energy) * self.H / LA.norm(self.H, "fro")
         return self.H
 
     # ========================================================
@@ -142,7 +149,7 @@ class Channel:
     def snr_upper_bound(self) -> float:
         """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
         return self.rx_power * self.tx.N * self.rx.N / self.rx.noise_power_lin
-    
+
     @property
     def snr_upper_bound_db(self) -> float:
         """return the SNR upper bound based on MRC+MRT with line-of-sight channel"""
