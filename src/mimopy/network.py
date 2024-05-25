@@ -25,9 +25,7 @@ class Network:
     def __init__(self, name="Network", *args, **kwargs):
         self.name = name
         self.links: Dict[str, Channel] = {}
-        self.connections: Dict[
-            AntennaArray, Dict[str, List[Tuple[AntennaArray, Channel]]]
-        ] = {}
+        self.connections: Dict[AntennaArray, Dict[str, List[Channel]]] = {}
         self.target_links: List[Channel] = []
         self.target_nodes: List[AntennaArray] = []
 
@@ -72,9 +70,9 @@ class Network:
         if link.name not in self.links and link not in self.links.values():
             self.links[link.name] = link
             self.add_nodes(link.tx)
-            self.connections[link.tx]["dl"].append((link.rx, link))
+            self.connections[link.tx]["dl"].append(link)
             self.add_nodes(link.rx)
-            self.connections[link.rx]["ul"].append((link.tx, link))
+            self.connections[link.rx]["ul"].append(link)
 
     def add_links(self, links: Iterable[Channel]):
         """Add links to the network."""
@@ -87,14 +85,14 @@ class Network:
     def _remove_node(self, node: AntennaArray):
         """Remove a node and all links associated with it from the network."""
         if node in self.connections:
-            for _, link in self.connections[node]["dl"]:
+            for link in self.connections[node]["dl"]:
                 # the node is the tx; remove ul from link.rx
                 self.links.pop(link, None)
-                self.connections[link.rx]["ul"].remove((node, link))
-            for _, link in self.connections[node]["ul"]:
+                self.connections[link.rx]["ul"].remove(link)
+            for link in self.connections[node]["ul"]:
                 # the node is the rx; remove dl from link.tx
                 self.links.pop(link, None)
-                self.connections[link.tx]["dl"].remove((node, link))
+                self.connections[link.tx]["dl"].remove(link)
 
     def remove_nodes(self, nodes):
         """Remove nodes from the network."""
@@ -109,8 +107,8 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         self.links.pop(link.name, None)
-        self.connections[link.tx]["dl"].remove((link.rx, link))
-        self.connections[link.rx]["ul"].remove((link.tx, link))
+        self.connections[link.tx]["dl"].remove(link)
+        self.connections[link.rx]["ul"].remove(link)
 
     def remove_links(self, links):
         """Remove links from the network."""
@@ -138,9 +136,9 @@ class Network:
             node = self.nodes[node]
 
         node.location = np.asarray(location)
-        for _, link in self.connections[node]["dl"]:
+        for link in self.connections[node]["dl"]:
             link.realize()
-        for _, link in self.connections[node]["ul"]:
+        for link in self.connections[node]["ul"]:
             link.realize()
 
     # ===================================================================
@@ -283,9 +281,10 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         interference = 0
-        for _, ul in self.connections[link.rx]["ul"]:
+        for ul in self.connections[link.rx]["ul"]:
             if ul != link:
                 interference += self.signal_power(ul, db=False)
+
         return 10 * log10(interference + np.finfo(float).tiny) if db else interference
 
     def inr(self, link=None, db=True) -> float:
@@ -323,9 +322,9 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         sig_pow_nb = 0
-        for tx, ul in self.connections[link.rx]["ul"]:
+        for ul in self.connections[link.rx]["ul"]:
             if ul != link:
-                sig_pow_nb += ul.rx_power * tx.N * ul.rx.N
+                sig_pow_nb += ul.rx_power * ul.tx.N * ul.rx.N
         inr_ub = sig_pow_nb / link.rx.noise_power_lin
         return 10 * log10(inr_ub + np.finfo(float).tiny) if db else inr_ub
 
@@ -337,7 +336,7 @@ class Network:
         coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
         if ax is None:
             _, ax = plt.subplots(**kwargs)
-        for node, value in self.connections.items():
+        for node, connection in self.connections.items():
             # plot nodes
             node_loc = node.location[coord_idx]
             # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
@@ -349,8 +348,8 @@ class Network:
                     node_loc[coord_idx],
                 )
             # plot downlink
-            for dl, link in value["dl"]:
-                dl_loc = dl.location[coord_idx]
+            for link in connection["dl"]:
+                dl_loc = link.rx.location[coord_idx]
                 style = "c-" if self.is_target(link) else "k:"
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
@@ -359,7 +358,7 @@ class Network:
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
                     "m*",
-                    label=dl.name,
+                    label=link.rx.name,
                 )
                 if labels:
                     offset = np.random.uniform(dl_loc - node_loc) * 0.1
@@ -374,7 +373,7 @@ class Network:
         """Plot the network in 3D."""
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, **kwargs)
-        for node, value in self.connections.items():
+        for node, connection in self.connections.items():
             # plot nodes
             node_loc = node.location
             style = "b" if self.is_target(node) else "k"
@@ -382,8 +381,8 @@ class Network:
             if labels:
                 ax.text(*node_loc, node.name)
             # plot downlink
-            for dl, link in value["dl"]:
-                dl_loc = dl.location
+            for link in connection["dl"]:
+                dl_loc = link.rx.location
                 style = "c-" if self.is_target(link) else "k:"
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
@@ -392,7 +391,7 @@ class Network:
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
                     "m*",
-                    label=dl.name,
+                    label=link.rx.name,
                 )
                 if labels:
                     ax.text(*(dl_loc + node_loc) / 2, link.name)
