@@ -120,6 +120,29 @@ class Network:
         else:
             self._remove_link(links)
 
+    def realize(self):
+        """Realize the network."""
+        for _, link in self.links.items():
+            link.realize()
+
+    def move_node(self, node: str | AntennaArray, location):
+        """Move a node to a new location.
+
+        Parameters
+        ----------
+        node : str or AntennaArray
+            Node to move.
+        location : array_like
+            New location of the node."""
+        if isinstance(node, str):
+            node = self.nodes[node]
+
+        node.location = np.asarray(location)
+        for _, link in self.connections[node]["dl"]:
+            link.realize()
+        for _, link in self.connections[node]["ul"]:
+            link.realize()
+
     # ===================================================================
     # Target Links and Nodes
     # ===================================================================

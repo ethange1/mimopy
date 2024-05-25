@@ -35,9 +35,9 @@ class Channel:
         self.tx = tx
         self.rx = rx
         self.path_loss = get_path_loss(path_loss)
-        self.energy = self.tx.N * self.rx.N
+        # energy of the channel matrix TO BE REALIZED
+        self._energy = self.tx.N * self.rx.N
         self.seed = seed
-
         self.channel_matrix = None
         self._carrier_frequency = 1e9
         self._propagation_velocity = 299792458
@@ -62,6 +62,10 @@ class Channel:
     def energy(self):
         """Energy of the channel matrix."""
         return LA.norm(self.H, "fro") ** 2
+
+    @energy.setter
+    def energy(self, energy):
+        self._energy = energy
 
     @property
     def nodes(self):

@@ -19,7 +19,10 @@ class LoS(Channel):
 
     @property
     def aoa(self):
-        return get_relative_position(self.tx.array_center, self.rx.array_center)
+        range, az, el = get_relative_position(
+            self.tx.array_center, self.rx.array_center
+        )
+        return az, el
 
     @aoa.setter
     def aoa(self, _):
@@ -36,10 +39,12 @@ class LoS(Channel):
             AoA/AoD. If not specified, the angles are
             calculated based on the relative position of the transmitter and receiver.
         """
-        az, el = get_relative_position(self.tx.array_center, self.rx.array_center)
+        range, az, el = get_relative_position(
+            self.tx.array_center, self.rx.array_center
+        )
         tx_response = self.tx.get_array_response(az, el)
         rx_response = self.rx.get_array_response(az + np.pi, el + np.pi)
         # H = np.outer(tx_response, rx_response).T
         self.H = np.outer(rx_response, tx_response.conj())
-        self.normalize_energy(self.energy)
+        self.normalize_energy(self._energy)
         return self

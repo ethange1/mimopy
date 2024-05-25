@@ -21,7 +21,7 @@ class Rayleigh(Channel):
     def realize(self):
         """Realize the channel. Energy is used to adjusting the expectation of the channel"""
         np.random.seed(self.seed)
-        energy = self.energy / self.tx.N / self.rx.N
+        energy = self._energy / self.tx.N / self.rx.N
         shape = (self.rx.N, self.tx.N)
         self.channel_matrix = np.sqrt(energy / 2) * (
             np.random.randn(*shape) + 1j * np.random.randn(*shape)

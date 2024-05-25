@@ -1,5 +1,9 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from ..awgn import Channel
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..awgn import Channel
 
 
 class PathLoss(ABC):

@@ -22,5 +22,5 @@ class SphericalWave(Channel):
         # get relative phase shift
         phase_shift = 2 * np.pi * d
         self.channel_matrix = np.exp(1j * phase_shift).T.conj()
-        self.normalize_energy(self.energy)
+        self.normalize_energy(self._energy)
         return self
