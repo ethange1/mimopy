@@ -18,16 +18,16 @@ class Network:
         links (list): List of links in the network.
         nodes (tuple): Tuple of nodes in the network.
         connections (dict): Dictionary of connections in the network.
-        target_links (list): List of target links in the network.
-        target_nodes (list): List of target nodes in the network.
+        loi (list): List of links of interest in the network.
+        noi (list): List of nodes of interest in the network.
     """
 
     def __init__(self, name="Network", *args, **kwargs):
         self.name = name
         self.links: Dict[str, Channel] = {}
         self.connections: Dict[AntennaArray, Dict[str, List[Channel]]] = {}
-        self.target_links: List[Channel] = []
-        self.target_nodes: List[AntennaArray] = []
+        self.loi: List[Channel] = []
+        self.noi: List[AntennaArray] = []
 
     def __str__(self):
         return self.name
@@ -123,7 +123,12 @@ class Network:
         for _, link in self.links.items():
             link.realize()
 
-    def move_node(self, node: str | AntennaArray, location):
+    def clear_weights(self):
+        """Clear the weights of all nodes in the network."""
+        for node in self.nodes.values():
+            node.set_weights(1)
+
+    def _move_node(self, node: str | AntennaArray, location):
         """Move a node to a new location.
 
         Parameters
@@ -141,6 +146,34 @@ class Network:
         for link in self.connections[node]["ul"]:
             link.realize()
 
+    def move_nodes(self, nodes, locations):
+        """Move nodes to new locations.
+
+        Parameters
+        ----------
+        nodes : list
+            Nodes to move.
+        locations : list
+            New locations of the nodes."""
+
+        if len(nodes) != len(locations):
+            raise ValueError("The number of nodes and locations must be the same.")
+        if isinstance(nodes, str):
+            self._move_node(nodes, locations)
+            return
+        for node, location in zip(nodes, locations):
+            self._move_node(node, location)
+        # connected_links = []
+        # for node, location in zip(nodes, locations):
+        #     connected_links.append(
+        #         self.connections[node]["dl"] + self.connections[node]["ul"]
+        #     )
+        #     node.location = np.asarray(location)
+        # # purge duplicates and update all links at once
+        # connected_links = list(set(connected_links))
+        # for link in connected_links:
+        #     link.realize()
+
     # ===================================================================
     # Target Links and Nodes
     # ===================================================================
@@ -155,56 +188,42 @@ class Network:
             "Cannot set target_weights directly. Use add_target_nodes() instead."
         )
 
-    def add_target_nodes(self, nodes):
-        """Add target nodes to the network."""
+    def add_noi(self, nodes):
+        """Add nodes of interest to the network."""
         if isinstance(nodes, Iterable):
             for node in nodes:
                 self._add_node(node)
-                self.target_nodes.append(node)
+                self.noi.append(node)
         else:
             self._add_node(nodes)
-            self.target_nodes.append(nodes)
+            self.noi.append(nodes)
 
-    def remove_target_nodes(self, nodes):
-        """Remove target nodes from the network."""
+    def remove_noi(self, nodes):
+        """Remove nodes of interest from the network."""
         if isinstance(nodes, Iterable):
             for node in nodes:
-                self.target_nodes.remove(node)
+                self.noi.remove(node)
         else:
-            self.target_nodes.remove(nodes)
+            self.noi.remove(nodes)
 
-    def add_target_links(self, links):
-        """Add target links to the network."""
+    def add_loi(self, links):
+        """Add links of interest from network."""
         if isinstance(links, Iterable):
             for link in links:
                 self._add_link(link)
-                self.target_links.append(link)
+                self.loi.append(link)
         else:
             self._add_link(links)
-            self.target_links.append(links)
+            self.loi.append(links)
 
-    def remove_target_links(self, links):
-        """Remove target links from the network."""
+    def remove_loi(self, links):
+        """Remove links of interest from network."""
         if isinstance(links, Iterable):
             for link in links:
-                self.target_links.remove(link)
+                self.loi.remove(link)
         else:
-            self.target_links.remove(links)
-
-    def _is_target_link(self, link: Channel):
-        return link in self.target_links
-
-    def _is_target_node(self, node: AntennaArray):
-        return node in self.target_nodes
-
-    def is_target(self, obj: AntennaArray | Channel):
-        if isinstance(obj, Channel):
-            return self._is_target_link(obj)
-        elif isinstance(obj, AntennaArray):
-            return self._is_target_node(obj)
-        else:
-            raise TypeError(f"Object of type {type(obj)} is not supported.")
-
+            self.loi.remove(links)
+            
     # ===================================================================
     # Link measurement methods wrapper
     # ===================================================================
@@ -340,17 +359,14 @@ class Network:
             # plot nodes
             node_loc = node.location[coord_idx]
             # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
-            style = "b" if self.is_target(node) else "k"
+            style = "b" if (node in self.noi) else "k"
             ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
             if labels:
-                ax.annotate(
-                    node.name,
-                    node_loc[coord_idx],
-                )
+                ax.annotate(node.name, node_loc)
             # plot downlink
             for link in connection["dl"]:
                 dl_loc = link.rx.location[coord_idx]
-                style = "c-" if self.is_target(link) else "k:"
+                style = "c-" if (link in self.loi) else "k:"
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     style,
@@ -376,14 +392,14 @@ class Network:
         for node, connection in self.connections.items():
             # plot nodes
             node_loc = node.location
-            style = "b" if self.is_target(node) else "k"
+            style = "b" if (node in self.noi) else "k"
             ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
             if labels:
                 ax.text(*node_loc, node.name)
             # plot downlink
             for link in connection["dl"]:
                 dl_loc = link.rx.location
-                style = "c-" if self.is_target(link) else "k:"
+                style = "c-" if (link in self.loi) else "k:"
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     style,
@@ -406,7 +422,7 @@ class Network:
 
     def plot_gain(self, polar=True, axes=None, weights=None, ylim=-20, **kwargs):
         """Plot the beam pattern of the controlled nodes."""
-        num_plots = len(self.target_nodes)
+        num_plots = len(self.noi)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
         num_rows = np.ceil(num_plots / num_cols).astype(int)
         if "figsize" not in kwargs:
@@ -418,7 +434,7 @@ class Network:
                 )
             else:
                 fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
-        for i, (node, ax) in enumerate(zip(self.target_nodes, np.ravel(axes))):
+        for i, (node, ax) in enumerate(zip(self.noi, np.ravel(axes))):
             if weights is not None:
                 node.plot_gain(ax=ax, weights=weights[i], polar=polar)
             else:

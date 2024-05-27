@@ -15,7 +15,11 @@ class PathLoss(ABC):
 
 class NoLoss(PathLoss):
     def __str__(self):
-        return "no_fading"
+        return "no_loss"
+    
+    def __repr__(self):
+        return "no_loss"
+
 
     def received_power(self, channel: Channel):
         return channel.tx.power
@@ -26,7 +30,10 @@ class ConstantLoss(PathLoss):
         self.loss = loss
 
     def __str__(self):
-        return f"constant {self.loss} dB"
+        return f"constant loss {self.loss:.6f} dB"
+    
+    def __repr__(self):
+        return f"constant loss {self.loss:.6f} dB"
 
     def received_power(self, channel: Channel):
         return channel.tx.power / 10 ** (self.loss / 10)
