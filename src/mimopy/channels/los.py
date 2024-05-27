@@ -1,6 +1,5 @@
 from .awgn import Channel
 import numpy as np
-from .path_loss import get_path_loss
 from ..utils.geometry import get_relative_position
 
 

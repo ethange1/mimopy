@@ -175,18 +175,8 @@ class Network:
         #     link.realize()
 
     # ===================================================================
-    # Target Links and Nodes
+    # Links and Nodes of interest
     # ===================================================================
-
-    @property
-    def target_weights(self: Channel):
-        return [node.weights for node in self.target_nodes]
-
-    @target_weights.setter
-    def target_weights(self, _):
-        raise AttributeError(
-            "Cannot set target_weights directly. Use add_target_nodes() instead."
-        )
 
     def add_noi(self, nodes):
         """Add nodes of interest to the network."""
@@ -333,6 +323,8 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         return float(log2(1 + self.sinr(link, db=False)))
+
+    se = spectral_efficiency
 
     def inr_upper_bound(self, link: Channel | str = None, db=True) -> float:
         """Get the INR upper bound of the link. See Eq. (9) in LoneSTAR"""

@@ -6,6 +6,7 @@ from numpy import log10
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
+
 class AntennaArray:
     """Base class for array objects.
 
@@ -30,6 +31,7 @@ class AntennaArray:
         self.name = "AntennaArray"
         self.spacing = 0.5
         self.frequency = 1e9
+        self._config = f"({N} elm)"
         for kwarg in kwargs:
             self.__setattr__(kwarg, kwargs[kwarg])
 
@@ -39,7 +41,7 @@ class AntennaArray:
         return self.name
 
     def __repr__(self):
-        return self.name
+        return self.name + " " + self._config
 
     def __len__(self):
         return self.num_antennas
@@ -138,10 +140,12 @@ class AntennaArray:
             raise ValueError("ax must be 'x', 'y' or 'z'")
         ula = cls(N, coordinates * spacing)
         ula.array_center = array_center
+        config_map = {"x": f"({N}11)", "y": f"(1{N}1)", "z": f"(11{N})"}
+        ula._config = config_map[ax]
         for kwarg in kwargs:
             ula.__setattr__(kwarg, kwargs[kwarg])
         return ula
-    
+
     initialize_ula = ula
 
     @classmethod
@@ -200,6 +204,12 @@ class AntennaArray:
         upa.array_center = array_center
         for kwarg in kwargs:
             upa.__setattr__(kwarg, kwargs[kwarg])
+        config_map = {
+            "xy": f"({num_rows}{num_cols}1)",
+            "yz": f"(1{num_rows}{num_cols})",
+            "xz": f"({num_rows}1{num_cols})",
+        }
+        upa._config = config_map[plane]
         return upa
 
     initialize_upa = upa
