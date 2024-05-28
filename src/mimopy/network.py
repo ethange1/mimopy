@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple
 from collections.abc import Iterable
+from dataclasses import dataclass 
 
 import numpy as np
 from numpy import log10, log2
@@ -7,7 +8,6 @@ from numpy import log10, log2
 from .devices.antenna_array import AntennaArray
 from .channels import Channel
 import matplotlib.pyplot as plt
-
 
 class Network:
     """Network class.
@@ -18,14 +18,18 @@ class Network:
         links (list): List of links in the network.
         nodes (tuple): Tuple of nodes in the network.
         connections (dict): Dictionary of connections in the network.
+        ng (dict): Node group. Dictionary of List[nodes] in the network.
+        lg (dict): Link group. Dictionary of List[links] in the network.
         loi (list): List of links of interest in the network.
         noi (list): List of nodes of interest in the network.
     """
 
-    def __init__(self, name="Network", *args, **kwargs):
+    def __init__(self, name='Network', *args, **kwargs):
         self.name = name
         self.links: Dict[str, Channel] = {}
         self.connections: Dict[AntennaArray, Dict[str, List[Channel]]] = {}
+        self.lg: Dict[str, List[AntennaArray]] = {}
+        self.ng: Dict[str, List[AntennaArray]] = {}
         self.loi: List[Channel] = []
         self.noi: List[AntennaArray] = []
 
@@ -45,16 +49,18 @@ class Network:
 
     @nodes.setter
     def nodes(self, _):
-        raise AttributeError("Cannot set nodes directly. Use add_nodes() instead.")
+        raise AttributeError('Cannot set nodes directly. Use add_nodes() instead.')
 
     n = nodes
     l = property(lambda self: self.links)  # noqa: E741
     topology = property(lambda self: self.connections)
+    link_groups = property(lambda self: self.lg)
+    node_groups = property(lambda self: self.ng)
 
     def _add_node(self, node: AntennaArray):
         """Add a node to the network."""
         if node not in self.connections:
-            self.connections[node] = {"dl": [], "ul": []}
+            self.connections[node] = {'dl': [], 'ul': []}
 
     def add_nodes(self, nodes: Iterable[AntennaArray]):
         """Add nodes to the network."""
@@ -66,13 +72,13 @@ class Network:
 
     def _add_link(self, link: Channel):
         """Add a link to the network."""
-        # link.name = f"{len(self.links)}_" + link.name
+        # link.name = f'{len(self.links)}_' + link.name
         if link.name not in self.links and link not in self.links.values():
             self.links[link.name] = link
             self.add_nodes(link.tx)
-            self.connections[link.tx]["dl"].append(link)
+            self.connections[link.tx]['dl'].append(link)
             self.add_nodes(link.rx)
-            self.connections[link.rx]["ul"].append(link)
+            self.connections[link.rx]['ul'].append(link)
 
     def add_links(self, links: Iterable[Channel]):
         """Add links to the network."""
@@ -85,14 +91,14 @@ class Network:
     def _remove_node(self, node: AntennaArray):
         """Remove a node and all links associated with it from the network."""
         if node in self.connections:
-            for link in self.connections[node]["dl"]:
+            for link in self.connections[node]['dl']:
                 # the node is the tx; remove ul from link.rx
                 self.links.pop(link, None)
-                self.connections[link.rx]["ul"].remove(link)
-            for link in self.connections[node]["ul"]:
+                self.connections[link.rx]['ul'].remove(link)
+            for link in self.connections[node]['ul']:
                 # the node is the rx; remove dl from link.tx
                 self.links.pop(link, None)
-                self.connections[link.tx]["dl"].remove(link)
+                self.connections[link.tx]['dl'].remove(link)
 
     def remove_nodes(self, nodes):
         """Remove nodes from the network."""
@@ -107,8 +113,8 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         self.links.pop(link.name, None)
-        self.connections[link.tx]["dl"].remove(link)
-        self.connections[link.rx]["ul"].remove(link)
+        self.connections[link.tx]['dl'].remove(link)
+        self.connections[link.rx]['ul'].remove(link)
 
     def remove_links(self, links):
         """Remove links from the network."""
@@ -141,9 +147,9 @@ class Network:
             node = self.nodes[node]
 
         node.location = np.asarray(location)
-        for link in self.connections[node]["dl"]:
+        for link in self.connections[node]['dl']:
             link.realize()
-        for link in self.connections[node]["ul"]:
+        for link in self.connections[node]['ul']:
             link.realize()
 
     def move_nodes(self, nodes, locations):
@@ -157,63 +163,13 @@ class Network:
             New locations of the nodes."""
 
         if len(nodes) != len(locations):
-            raise ValueError("The number of nodes and locations must be the same.")
+            raise ValueError('The number of nodes and locations must be the same.')
         if isinstance(nodes, str):
             self._move_node(nodes, locations)
             return
         for node, location in zip(nodes, locations):
             self._move_node(node, location)
-        # connected_links = []
-        # for node, location in zip(nodes, locations):
-        #     connected_links.append(
-        #         self.connections[node]["dl"] + self.connections[node]["ul"]
-        #     )
-        #     node.location = np.asarray(location)
-        # # purge duplicates and update all links at once
-        # connected_links = list(set(connected_links))
-        # for link in connected_links:
-        #     link.realize()
 
-    # ===================================================================
-    # Links and Nodes of interest
-    # ===================================================================
-
-    def add_noi(self, nodes):
-        """Add nodes of interest to the network."""
-        if isinstance(nodes, Iterable):
-            for node in nodes:
-                self._add_node(node)
-                self.noi.append(node)
-        else:
-            self._add_node(nodes)
-            self.noi.append(nodes)
-
-    def remove_noi(self, nodes):
-        """Remove nodes of interest from the network."""
-        if isinstance(nodes, Iterable):
-            for node in nodes:
-                self.noi.remove(node)
-        else:
-            self.noi.remove(nodes)
-
-    def add_loi(self, links):
-        """Add links of interest from network."""
-        if isinstance(links, Iterable):
-            for link in links:
-                self._add_link(link)
-                self.loi.append(link)
-        else:
-            self._add_link(links)
-            self.loi.append(links)
-
-    def remove_loi(self, links):
-        """Remove links of interest from network."""
-        if isinstance(links, Iterable):
-            for link in links:
-                self.loi.remove(link)
-        else:
-            self.loi.remove(links)
-            
     # ===================================================================
     # Link measurement methods wrapper
     # ===================================================================
@@ -290,7 +246,7 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         interference = 0
-        for ul in self.connections[link.rx]["ul"]:
+        for ul in self.connections[link.rx]['ul']:
             if ul != link:
                 interference += self.signal_power(ul, db=False)
 
@@ -333,7 +289,7 @@ class Network:
         if isinstance(link, str):
             link = self.links[link]
         sig_pow_nb = 0
-        for ul in self.connections[link.rx]["ul"]:
+        for ul in self.connections[link.rx]['ul']:
             if ul != link:
                 sig_pow_nb += ul.rx_power * ul.tx.N * ul.rx.N
         inr_ub = sig_pow_nb / link.rx.noise_power_lin
@@ -342,71 +298,71 @@ class Network:
     # ===================================================================
     # Plotting methods
     # ===================================================================
-    def plot(self, labels=False, plane="xy", ax=None, **kwargs):
+    def plot(self, labels=False, plane='xy', ax=None, **kwargs):
         """Plot the network."""
-        coord_idx = {"xy": [0, 1], "yz": [1, 2], "xz": [0, 2]}[plane]
+        coord_idx = {'xy': [0, 1], 'yz': [1, 2], 'xz': [0, 2]}[plane]
         if ax is None:
             _, ax = plt.subplots(**kwargs)
         for node, connection in self.connections.items():
             # plot nodes
             node_loc = node.location[coord_idx]
-            # ax.scatter(*node_loc[coord_idx], "o", label=node.name)
-            style = "b" if (node in self.noi) else "k"
+            # ax.scatter(*node_loc[coord_idx], 'o', label=node.name)
+            style = 'b' if (node in self.noi) else 'k'
             ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
             if labels:
                 ax.annotate(node.name, node_loc)
             # plot downlink
-            for link in connection["dl"]:
+            for link in connection['dl']:
                 dl_loc = link.rx.location[coord_idx]
-                style = "c-" if (link in self.loi) else "k:"
+                style = 'c-' if (link in self.loi) else 'k:'
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     style,
                 )
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
-                    "m*",
+                    'm*',
                     label=link.rx.name,
                 )
                 if labels:
                     offset = np.random.uniform(dl_loc - node_loc) * 0.1
                     ax.annotate(link.name, (dl_loc + node_loc) / 2 + offset)
-        plt.xlabel(f"{plane[0]}-axis")
-        plt.ylabel(f"{plane[1]}-axis")
-        plt.title(f"{self.name}")
+        plt.xlabel(f'{plane[0]}-axis')
+        plt.ylabel(f'{plane[1]}-axis')
+        plt.title(f'{self.name}')
         if ax is None:
             plt.show()
 
     def plot_3d(self, ax=None, labels=False, **kwargs):
         """Plot the network in 3D."""
         if ax is None:
-            fig, ax = plt.subplots(subplot_kw={"projection": "3d"}, **kwargs)
+            fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, **kwargs)
         for node, connection in self.connections.items():
             # plot nodes
             node_loc = node.location
-            style = "b" if (node in self.noi) else "k"
+            style = 'b' if (node in self.noi) else 'k'
             ax.scatter(*node_loc, s=70, facecolors=style, label=node.name)
             if labels:
                 ax.text(*node_loc, node.name)
             # plot downlink
-            for link in connection["dl"]:
+            for link in connection['dl']:
                 dl_loc = link.rx.location
-                style = "c-" if (link in self.loi) else "k:"
+                style = 'c-' if (link in self.loi) else 'k:'
                 ax.plot(
                     *np.array([node_loc, dl_loc]).T,
                     style,
                 )
                 ax.plot(
                     *(dl_loc + (node_loc - dl_loc) / 5),
-                    "m*",
+                    'm*',
                     label=link.rx.name,
                 )
                 if labels:
                     ax.text(*(dl_loc + node_loc) / 2, link.name)
-        ax.set_xlabel("X-axis")
-        ax.set_ylabel("Y-axis")
-        ax.set_zlabel("Z-axis")
-        ax.set_title(f"{self.name}")
+        ax.set_xlabel('X-axis')
+        ax.set_ylabel('Y-axis')
+        ax.set_zlabel('Z-axis')
+        ax.set_title(f'{self.name}')
         plt.tight_layout()
         if ax is None:
             plt.show()
@@ -417,12 +373,12 @@ class Network:
         num_plots = len(self.noi)
         num_cols = np.ceil(np.sqrt(num_plots)).astype(int)
         num_rows = np.ceil(num_plots / num_cols).astype(int)
-        if "figsize" not in kwargs:
-            kwargs["figsize"] = (5 * num_cols, 5 * num_rows)
+        if 'figsize' not in kwargs:
+            kwargs['figsize'] = (5 * num_cols, 5 * num_rows)
         if axes is None:
             if polar:
                 fig, axes = plt.subplots(
-                    num_rows, num_cols, subplot_kw={"polar": True}, **kwargs
+                    num_rows, num_cols, subplot_kw={'polar': True}, **kwargs
                 )
             else:
                 fig, axes = plt.subplots(num_rows, num_cols, **kwargs)
@@ -432,11 +388,11 @@ class Network:
             else:
                 node.plot_gain(ax=ax, polar=polar)
             title = ax.get_title()
-            ax.set_title(f"{node.name}: {title}")
+            ax.set_title(f'{node.name}: {title}')
         if polar:
             for ax in axes:
                 ax.set_ylim(bottom=ylim)
-                ax.set_theta_zero_location("E")
+                ax.set_theta_zero_location('E')
                 ax.set_theta_direction(1)
         if axes is None:
             plt.tight_layout()
