@@ -1,6 +1,6 @@
 from .awgn import Channel
 import numpy as np
-from ..utils.geometry import get_relative_position
+from ..utils.geometry import relative_position
 
 
 class LoS(Channel):
@@ -18,7 +18,7 @@ class LoS(Channel):
 
     @property
     def aoa(self):
-        range, az, el = get_relative_position(
+        range, az, el = relative_position(
             self.tx.array_center, self.rx.array_center
         )
         return az, el
@@ -38,7 +38,7 @@ class LoS(Channel):
             AoA/AoD. If not specified, the angles are
             calculated based on the relative position of the transmitter and receiver.
         """
-        range, az, el = get_relative_position(
+        range, az, el = relative_position(
             self.tx.array_center, self.rx.array_center
         )
         tx_response = self.tx.get_array_response(az, el)

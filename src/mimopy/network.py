@@ -28,7 +28,7 @@ class Network:
         self.name = name
         self.links: Dict[str, Channel] = {}
         self.connections: Dict[AntennaArray, Dict[str, List[Channel]]] = {}
-        self.lg: Dict[str, List[AntennaArray]] = {}
+        self.lg: Dict[str, List[Channel]] = {}
         self.ng: Dict[str, List[AntennaArray]] = {}
         self.loi: List[Channel] = []
         self.noi: List[AntennaArray] = []
@@ -183,17 +183,17 @@ class Network:
             return {lk: self.rx_power(lk) for lk in link}
         return link.rx_power
 
-    def bf_gain(self, link: Channel | str = None, db=True) -> float:
+    def gain(self, link: Channel | str = None, db=True) -> float:
         """Get the beamforming gain of the link in dB."""
         if link is None:
-            return {lk: self.bf_gain(lk, db) for lk in self.links.values()}
+            return {lk: self.gain(lk, db) for lk in self.links.values()}
         if isinstance(link, str):
             link = self.links[link]
         if isinstance(link, Iterable):
             return {lk: self.snr(lk, db) for lk in link}
         return link.bf_gain_db if db else link.bf_gain
 
-    gain = bf_gain
+    bf_gain = gain
 
     def signal_power(self, link: Channel | str = None, db=True) -> float:
         """Get the beamforming gain of the link in dB."""

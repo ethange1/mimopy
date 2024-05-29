@@ -1,10 +1,10 @@
 import numpy as np
 from typing import Tuple
 
-__all__ = ["get_relative_position"]
+__all__ = ["relative_position"]
 
 
-def get_relative_position(loc1, loc2) -> Tuple[float, float, float]:
+def relative_position(loc1, loc2) -> Tuple[float, float, float]:
     """Returns the relative position (range, azimuth and elevation) between 2 locations.
 
     Parameters
