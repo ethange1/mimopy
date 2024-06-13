@@ -646,8 +646,8 @@ class AntennaArray:
             # ax.set_ylim(-(max(array_response)), max(array_response) + 10)
             ax.set_xlabel("Azimuth (deg)")
             ax.set_ylabel("Gain (dB)")
-        cut_name = "Elevation" if cut_along == "el" else "Azimuth"
-        title = f"{cut_name} = {cut} deg, Max Gain = {np.max(np.real(gain)):.2f} dB"
+        cut_name = "el" if cut_along == "el" else "az"
+        title = f"{cut_name} = {cut} deg, max gain = {np.max(np.real(gain)):.2f} dB"
         ax.set_title(title)
         ax.grid(True)
         if weights is not None:
