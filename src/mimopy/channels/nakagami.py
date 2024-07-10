@@ -1,6 +1,8 @@
 import numpy as np
-from scipy.stats import nakagami
 from .awgn import Channel
+
+def fading_nakagami(m, size):
+    return np.sqrt(np.random.default_rng().gamma(shape=m, scale=1/m, size=size))
 
 class Nakagami(Channel):
     """Nakagami channel class.
@@ -15,7 +17,7 @@ class Nakagami(Channel):
         super().__init__(tx, rx, path_loss, *args, **kwargs)
         
         # Nakagami fading parameter
-        self.m = m  
+        self.m = m 
 
     def realize(self):
         
@@ -25,7 +27,7 @@ class Nakagami(Channel):
         shape = (self.rx.N, self.tx.N)
         
         # Nakagami distribution for magnitudes
-        magnitude = nakagami.rvs(self.m, size=shape) 
+        magnitude = fading_nakagami(self.m, size=shape) 
         
         # Uniform distribution for phases
         phase = np.random.rand(*shape) * 2 * np.pi 
